@@ -71,18 +71,30 @@ def _parse_bilibili(url):
                 continue
 
             raw = data["data"]
-            videos = raw.get("videos", [])
-
             files = []
-            for v in videos:
-                url = v.get("url", "")
-                files.append({
-                    "index": v.get("index", len(files) + 1),
-                    "title": _clean_title(v.get("title", "无标题")),
-                    "url": url,
-                    "type": "video",
-                    "size": _get_file_size(url) if url else 0,
-                })
+
+            videos = raw.get("videos", [])
+            if videos:
+                for v in videos:
+                    url = v.get("url", "")
+                    if url:
+                        files.append({
+                            "index": v.get("index", len(files) + 1),
+                            "title": _clean_title(v.get("title", "分P视频")),
+                            "url": url,
+                            "type": "video",
+                            "size": _get_file_size(url),
+                        })
+            else:
+                main_url = raw.get("url", "")
+                if main_url:
+                    files.append({
+                        "index": 1,
+                        "title": _clean_title(raw.get("title", "视频")),
+                        "url": main_url,
+                        "type": "video",
+                        "size": _get_file_size(main_url),
+                    })
 
             return {
                 "title": _clean_title(raw.get("title", "")),

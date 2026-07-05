@@ -249,8 +249,8 @@ onUnmounted(stopPolling)
   --border-hover: rgba(0, 0, 0, 0.12);
   --border-active: rgba(91, 154, 255, 0.5);
   --text-primary: #1a1a2e;
-  --text-secondary: #5a6377;
-  --text-muted: #8b95a8;
+  --text-secondary: #3f4759;
+  --text-muted: #6b758b;
   --progress-bg: rgba(0, 0, 0, 0.04);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -374,6 +374,11 @@ html, body {
 
 .light .landing-desc {
   color: var(--text-muted);
+}
+
+.light .dir-path {
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .landing-btn {

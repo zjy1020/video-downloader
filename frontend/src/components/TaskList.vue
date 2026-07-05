@@ -11,7 +11,8 @@
       下载任务
       <span class="task-count">{{ filteredTasks.length }}</span>
       <div class="header-spacer"></div>
-      <button v-if="hasFinished" class="btn-clear" @click="clearFinished">清空已完成</button>
+      <button v-if="hasFinished" class="btn-clear" @click="clearFinished">清空已结束</button>
+      <button v-if="props.tasks.length > 0" class="btn-clear btn-clear-all" @click="clearAll">清空全部</button>
     </div>
 
     <div class="filter-tabs" v-if="tasks.length > 0">
@@ -80,6 +81,13 @@ const hasFinished = computed(() =>
 async function clearFinished() {
   try {
     await axios.delete(`${API_BASE}/tasks?scope=finished`)
+    emit('delete', '__all__')
+  } catch { /* noop */ }
+}
+
+async function clearAll() {
+  try {
+    await axios.delete(`${API_BASE}/tasks?scope=all`)
     emit('delete', '__all__')
   } catch { /* noop */ }
 }

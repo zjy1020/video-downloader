@@ -26,11 +26,12 @@
         </span>
       </div>
 
-      <div class="card-progress-area">
+      <div v-if="task.status === 'downloading' || task.status === 'waiting'" class="card-progress-area">
         <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: task.progress + '%' }"></div>
+          <div v-if="task.progress >= 0" class="progress-fill" :style="{ width: task.progress + '%' }"></div>
+          <div v-else class="progress-indeterminate"></div>
         </div>
-        <span class="progress-text">{{ task.progress }}%</span>
+        <span class="progress-text">{{ task.progress >= 0 ? task.progress + '%' : '...' }}</span>
       </div>
 
       <div v-if="task.error" class="card-error" :title="task.error">
@@ -280,6 +281,19 @@ function openFile() {
 @keyframes shimmer {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
+}
+
+.progress-indeterminate {
+  height: 100%;
+  width: 35%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), #7c3aed);
+  animation: indeterminate 1s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
 }
 
 .card-success .progress-fill {
