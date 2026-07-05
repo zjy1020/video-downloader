@@ -105,6 +105,27 @@
           </div>
         </div>
 
+        <div class="dl-options">
+          <div class="dl-mode-group">
+            <label class="dl-option" :class="{ active: dlMode === 'auto' }">
+              <input type="radio" value="auto" v-model="dlMode" />
+              <span>自动</span>
+            </label>
+            <label class="dl-option" :class="{ active: dlMode === 'sequential' }">
+              <input type="radio" value="sequential" v-model="dlMode" />
+              <span>单线程</span>
+            </label>
+            <label class="dl-option" :class="{ active: dlMode === 'parallel' }">
+              <input type="radio" value="parallel" v-model="dlMode" />
+              <span>多线程</span>
+            </label>
+          </div>
+          <div v-if="dlMode === 'parallel'" class="dl-threads-group">
+            <span class="dl-threads-label">线程数</span>
+            <input type="number" v-model.number="dlThreads" min="2" max="16" class="dl-threads-input" />
+          </div>
+        </div>
+
         <button
           class="btn btn-accent btn-download"
           :disabled="selectedCount === 0 || downloading"
@@ -161,6 +182,8 @@ const parseResult = ref(null)
 const error = ref('')
 const previewImg = ref('')
 const selected = ref({})
+const dlMode = ref('auto')
+const dlThreads = ref(4)
 const parseHistory = ref(loadParseHistory())
 
 const selectedCount = computed(() =>
@@ -258,6 +281,8 @@ async function downloadSelected() {
         title: item.title,
         type: item.type,
         cover: item.cover,
+        mode: dlMode.value,
+        threads: dlThreads.value,
       })
     }
     emit('tasks-added')
@@ -356,7 +381,74 @@ async function downloadSelected() {
   filter: brightness(1.1);
 }
 
-.btn-download { margin-top: 12px; }
+.btn-download { margin-top: 8px; }
+
+.dl-options {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.dl-mode-group {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.dl-option {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.dl-option input { display: none; }
+
+.dl-option.active {
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.dl-option:not(.active):hover {
+  color: var(--text-secondary);
+}
+
+.dl-threads-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dl-threads-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dl-threads-input {
+  width: 56px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+  text-align: center;
+}
+
+.dl-threads-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
 
 .spinner {
   width: 14px;

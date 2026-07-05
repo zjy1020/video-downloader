@@ -87,7 +87,7 @@ def _download_sequential(task, url, headers, temp_path):
         return ext
 
 
-def _download_worker(task: DownloadTask, target_dir: str):
+def _download_worker(task: DownloadTask, target_dir: str, mode: str = "auto", threads: int = 4):
     try:
         update_task(task.task_id, status=TaskStatus.DOWNLOADING, progress=0)
 
@@ -112,10 +112,14 @@ def _download_worker(task: DownloadTask, target_dir: str):
             except Exception:
                 pass
 
-        if total_size >= 5 * 1024 * 1024:
+        if mode == "sequential":
+            update_task(task.task_id, progress=1 if total_size > 0 else -1)
+            ext = _download_sequential(task, task.url, headers, temp_path)
+
+        elif mode == "parallel" and total_size > 0:
             ext = _get_extension(task.url, "")
             try:
-                parts = 4
+                parts = max(threads, 1)
                 part_dir = os.path.join(target_dir, f"{base_name}_parts")
                 os.makedirs(part_dir, exist_ok=True)
                 part_size = total_size // parts
@@ -150,12 +154,52 @@ def _download_worker(task: DownloadTask, target_dir: str):
                 os.rmdir(part_dir)
             except Exception:
                 ext = _download_sequential(task, task.url, headers, temp_path)
-        elif total_size > 0:
-            update_task(task.task_id, progress=1)
-            ext = _download_sequential(task, task.url, headers, temp_path)
+
         else:
-            update_task(task.task_id, progress=-1)
-            ext = _download_sequential(task, task.url, headers, temp_path)
+            if total_size >= 5 * 1024 * 1024:
+                ext = _get_extension(task.url, "")
+                try:
+                    parts = 4
+                    part_dir = os.path.join(target_dir, f"{base_name}_parts")
+                    os.makedirs(part_dir, exist_ok=True)
+                    part_size = total_size // parts
+
+                    ranges = []
+                    for i in range(parts):
+                        start = i * part_size
+                        end = (start + part_size - 1) if i < parts - 1 else ""
+                        ranges.append((start, end))
+
+                    part_paths = []
+                    with ThreadPoolExecutor(max_workers=parts) as pool:
+                        futures = {}
+                        for i, (s, e) in enumerate(ranges):
+                            pp = os.path.join(part_dir, f"part_{i}")
+                            part_paths.append(pp)
+                            futures[pool.submit(_download_part, task.url, headers, s, e, pp)] = i
+
+                        done = 0
+                        for f in as_completed(futures):
+                            f.result()
+                            done += 1
+                            update_task(task.task_id, progress=int(done / parts * 100))
+
+                    with open(temp_path, "wb") as out:
+                        for pp in sorted(part_paths):
+                            with open(pp, "rb") as pf:
+                                out.write(pf.read())
+
+                    for pp in part_paths:
+                        os.remove(pp)
+                    os.rmdir(part_dir)
+                except Exception:
+                    ext = _download_sequential(task, task.url, headers, temp_path)
+            elif total_size > 0:
+                update_task(task.task_id, progress=1)
+                ext = _download_sequential(task, task.url, headers, temp_path)
+            else:
+                update_task(task.task_id, progress=-1)
+                ext = _download_sequential(task, task.url, headers, temp_path)
 
         save_path = os.path.join(target_dir, f"{base_name}{ext}")
 
@@ -177,6 +221,6 @@ def _download_worker(task: DownloadTask, target_dir: str):
             update_task(task.task_id, status=TaskStatus.FAILED, progress=0, error=str(e))
 
 
-def start_download(task: DownloadTask, target_dir: str):
-    _executor.submit(_download_worker, task, target_dir)
+def start_download(task: DownloadTask, target_dir: str, mode: str = "auto", threads: int = 4):
+    _executor.submit(_download_worker, task, target_dir, mode, threads)
     return task.task_id

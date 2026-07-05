@@ -28,6 +28,8 @@ class DownloadRequest(BaseModel):
     title: str
     type: str = "video"
     cover: str = ""
+    mode: str = "auto"
+    threads: int = 4
 
 
 class RetryRequest(BaseModel):
@@ -77,7 +79,7 @@ def download(req: DownloadRequest):
         cover=req.cover,
     )
     os.makedirs(target_dir, exist_ok=True)
-    start_download(task, target_dir)
+    start_download(task, target_dir, mode=req.mode, threads=req.threads)
     return {"code": 200, "msg": "下载已开始", "data": {"task_id": task.task_id}}
 
 
