@@ -66,13 +66,11 @@
           <div class="result-meta">
             <span class="platform-tag">{{ platformLabel }}</span>
             <span class="count-tag">{{ parseResult.task_list.length }} 个资源</span>
-            <span
-              v-if="showQuality"
-              class="quality-tag"
-              :class="{ active: parseQuality === 'high' }"
-              @click="toggleQuality"
-            >
-              {{ parseQuality === 'high' ? '高清' : '标清' }}
+            <span v-if="isBilibili && showQuality" class="quality-tag bili" :class="{ active: parseQuality !== 'normal' }">
+              <select v-model="parseQuality" class="quality-select" @change="onQualityChange">
+                <option v-for="q in biliQualities" :key="q.value" :value="q.value">{{ q.label }}</option>
+              </select>
+              <span class="quality-hint" title="列出的清晰度为可选上限，视频本身若不支持会自动降级到最高可用画质">ⓘ</span>
             </span>
           </div>
         </div>
@@ -193,6 +191,15 @@ const selected = ref({})
 const dlMode = ref('auto')
 const dlThreads = ref(4)
 const parseQuality = ref('normal')
+const biliQualities = [
+  { value: '16', label: '360P' },
+  { value: '32', label: '480P' },
+  { value: '64', label: '720P' },
+  { value: '80', label: '1080P' },
+  { value: '112', label: '1080P+' },
+  { value: '116', label: '1080P 60帧' },
+  { value: '120', label: '4K' },
+]
 const parseHistory = ref(loadParseHistory())
 
 const selectedCount = computed(() =>
@@ -205,13 +212,14 @@ const platformLabel = computed(() => {
   return map[parseResult.value.platform] || parseResult.value.platform
 })
 
+const isBilibili = computed(() => parseResult.value?.platform === 'bilibili')
+
 const showQuality = computed(() => {
-  return parseResult.value?.platform === 'douyin' && parseResult.value?.type === 'video'
+  return parseResult.value?.type === 'video'
 })
 
-async function toggleQuality() {
+async function onQualityChange() {
   if (!urlText.value) return
-  parseQuality.value = parseQuality.value === 'high' ? 'normal' : 'high'
   await doParse()
 }
 
@@ -272,14 +280,23 @@ async function doParse() {
   selected.value = {}
   parsing.value = true
   try {
-    const res = await axios.post(`${API_BASE}/parse`, { url: text, quality: parseQuality.value === 'high' ? 'high' : '' })
+    const qualityParam = parseQuality.value === 'normal' ? '' : parseQuality.value
+    const res = await axios.post(`${API_BASE}/parse`, { url: text, quality: qualityParam })
     if (res.data.code === 200) {
       parseResult.value = res.data.data
+      if (res.data.data.quality) {
+        parseQuality.value = res.data.data.quality
+      }
       saveParseHistory(text, res.data.data.title)
       for (const item of res.data.data.task_list) {
         selected.value[item.index] = true
       }
     } else {
+      if (parseQuality.value !== 'normal') {
+        parseQuality.value = 'normal'
+        await doParse()
+        return
+      }
       error.value = res.data.msg
     }
   } catch (e) {
@@ -603,6 +620,7 @@ async function downloadSelected() {
   color: var(--text-muted);
   transition: all 0.15s;
   user-select: none;
+  position: relative;
 }
 
 .quality-tag:hover {
@@ -614,6 +632,34 @@ async function downloadSelected() {
   background: var(--accent-glow);
   color: var(--accent);
   border-color: transparent;
+}
+
+.quality-tag.bili::after {
+  content: '▾';
+  margin-left: 2px;
+  font-size: 10px;
+}
+
+.quality-select {
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  outline: none;
+  border: none;
+  padding: 0 4px;
+}
+
+.quality-hint {
+  font-size: 11px;
+  cursor: help;
+  opacity: 0.5;
+  margin-left: 2px;
+  transition: opacity 0.15s;
+}
+
+.quality-hint:hover {
+  opacity: 1;
 }
 
 .file-list {
