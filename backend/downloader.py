@@ -104,6 +104,14 @@ def _download_worker(task: DownloadTask, target_dir: str):
         except Exception:
             pass
 
+        if total_size == 0:
+            try:
+                probe = _session.get(task.url, headers=headers, stream=True, timeout=10)
+                total_size = int(probe.headers.get("Content-Length", 0))
+                probe.close()
+            except Exception:
+                pass
+
         if total_size >= 5 * 1024 * 1024:
             ext = _get_extension(task.url, "")
             try:
