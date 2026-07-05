@@ -21,6 +21,7 @@ app.add_middleware(
 
 class ParseRequest(BaseModel):
     url: str
+    quality: str = ""
 
 
 class DownloadRequest(BaseModel):
@@ -42,7 +43,10 @@ class SetDirRequest(BaseModel):
 
 @app.post("/parse")
 def parse(req: ParseRequest):
-    result = parse_url(req.url)
+    quality = req.quality or None
+    result = parse_url(req.url, quality=quality)
+    if result.get("code") == 400:
+        return result
     files = result.get("files", [])
     if not files:
         return {"code": 400, "msg": "解析失败，未找到可下载的资源", "data": {"task_list": []}}

@@ -66,6 +66,14 @@
           <div class="result-meta">
             <span class="platform-tag">{{ platformLabel }}</span>
             <span class="count-tag">{{ parseResult.task_list.length }} 个资源</span>
+            <span
+              v-if="showQuality"
+              class="quality-tag"
+              :class="{ active: parseQuality === 'high' }"
+              @click="toggleQuality"
+            >
+              {{ parseQuality === 'high' ? '高清' : '标清' }}
+            </span>
           </div>
         </div>
 
@@ -184,6 +192,7 @@ const previewImg = ref('')
 const selected = ref({})
 const dlMode = ref('auto')
 const dlThreads = ref(4)
+const parseQuality = ref('normal')
 const parseHistory = ref(loadParseHistory())
 
 const selectedCount = computed(() =>
@@ -195,6 +204,16 @@ const platformLabel = computed(() => {
   const map = { bilibili: 'B站', douyin: '抖音' }
   return map[parseResult.value.platform] || parseResult.value.platform
 })
+
+const showQuality = computed(() => {
+  return parseResult.value?.platform === 'douyin' && parseResult.value?.type === 'video'
+})
+
+async function toggleQuality() {
+  if (!urlText.value) return
+  parseQuality.value = parseQuality.value === 'high' ? 'normal' : 'high'
+  await doParse()
+}
 
 function proxyUrl(url) {
   if (!url) return ''
@@ -253,7 +272,7 @@ async function doParse() {
   selected.value = {}
   parsing.value = true
   try {
-    const res = await axios.post(`${API_BASE}/parse`, { url: text })
+    const res = await axios.post(`${API_BASE}/parse`, { url: text, quality: parseQuality.value === 'high' ? 'high' : '' })
     if (res.data.code === 200) {
       parseResult.value = res.data.data
       saveParseHistory(text, res.data.data.title)
@@ -573,6 +592,28 @@ async function downloadSelected() {
   padding: 1px 8px;
   background: var(--bg-input);
   border-radius: 4px;
+}
+
+.quality-tag {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.quality-tag:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.quality-tag.active {
+  background: var(--accent-glow);
+  color: var(--accent);
+  border-color: transparent;
 }
 
 .file-list {

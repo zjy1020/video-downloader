@@ -4,6 +4,7 @@ import uuid
 
 BILIBILI_API = "https://api.bugpk.com/api/bilibili"
 DOUYIN_API = "https://api.bugpk.com/api/douyin"
+MMP_DOUYIN_API = "https://api.mmp.cc/api/Jiexi"
 
 
 def _clean_title(title):
@@ -108,7 +109,48 @@ def _parse_bilibili(url):
     return _mock_bilibili(url)
 
 
-def _parse_douyin(url):
+def _parse_douyin_quality(url, quality):
+    try:
+        resp = requests.get(MMP_DOUYIN_API, params={"url": url}, timeout=20)
+        data = resp.json()
+        if data.get("code") == 200:
+            raw = data["data"]
+            if raw.get("type") == "video":
+                key = "video_url_HQ" if quality == "high" else "video_url"
+                video_url = raw.get(key) or raw.get("video_url")
+                if video_url:
+                    files = [{
+                        "index": 1,
+                        "title": _clean_title(raw.get("desc", "视频")),
+                        "url": video_url,
+                        "type": "video",
+                        "size": 0,
+                    }]
+                    return {
+                        "title": _clean_title(raw.get("desc", "")),
+                        "platform": "douyin",
+                        "type": "video",
+                        "cover": "",
+                        "files": files,
+                        "quality": quality,
+                    }
+    except Exception:
+        pass
+    return None
+
+
+def _parse_douyin(url, quality=None):
+    if quality:
+        result = _parse_douyin_quality(url, quality)
+        if result:
+            return result
+        return {
+            "code": 400,
+            "msg": "高清解析失败，请尝试标清或默认模式",
+            "platform": "douyin",
+            "files": [],
+        }
+
     for attempt in range(2):
         try:
             resp = requests.get(DOUYIN_API, params={"url": url}, timeout=20)
@@ -160,6 +202,11 @@ def _parse_douyin(url):
             }
         except Exception:
             continue
+
+    result = _parse_douyin_quality(url, "normal")
+    if result:
+        return result
+
     return _mock_douyin(url)
 
 
@@ -170,12 +217,12 @@ def _extract_url(text):
     return text[idx:] if idx != -1 else text
 
 
-def parse_url(url):
+def parse_url(url, quality=None):
     url = _clean_url(_extract_url(url))
     platform = _detect_platform(url)
     if platform == "bilibili":
         return _parse_bilibili(url)
     elif platform == "douyin":
-        return _parse_douyin(url)
+        return _parse_douyin(url, quality=quality)
     else:
         return {"title": "不支持的链接", "platform": "unknown", "type": "unknown", "files": []}
