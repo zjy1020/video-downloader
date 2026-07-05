@@ -1,38 +1,76 @@
 <template>
-  <div class="app">
-    <div class="bg-glow glow-1"></div>
-    <div class="bg-glow glow-2"></div>
+  <div class="app" :class="theme">
+    <video autoplay muted loop playsinline class="bg-video" ref="videoRef">
+      <source src="/bg.mp4" type="video/mp4" />
+    </video>
+    <div class="bg-vignette"></div>
 
-    <header class="app-header">
-      <div class="header-left">
-        <div class="logo">
-          <img src="/logo.png" alt="logo" class="logo-img" />
+    <Transition name="fade-down">
+      <div v-if="!entered" class="landing">
+        <div class="landing-content">
+          <div class="landing-logo">
+            <img src="/logo.png" alt="logo" class="landing-logo-img" />
+          </div>
+          <h1 class="landing-title">解析</h1>
+          <p class="landing-desc">B站 / 抖音视频 & 图文链接解析下载</p>
+          <button class="landing-btn" @click="enterApp">
+            进入
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </button>
         </div>
-        <h1 class="app-title">解析</h1>
-        <span class="app-badge">V2</span>
       </div>
-      <div class="header-right">
-        <span class="dir-label">下载目录</span>
-        <code class="dir-path" :title="downloadDir">{{ downloadDir }}</code>
-        <button class="btn-ghost" @click="changeDir">更改</button>
+    </Transition>
+
+    <Transition name="fade-up">
+      <div v-if="entered" class="app-inner">
+        <header class="app-header">
+          <div class="header-left">
+            <div class="logo">
+              <img src="/logo.png" alt="logo" class="logo-img" />
+            </div>
+            <h1 class="app-title">解析</h1>
+            <span class="app-badge">V2</span>
+          </div>
+          <div class="header-right">
+            <button class="btn-theme" @click="toggleTheme" :title="theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'">
+              <svg v-if="theme === 'dark'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+              <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            </button>
+            <span class="dir-label">下载目录</span>
+            <code class="dir-path" :title="downloadDir">{{ downloadDir }}</code>
+            <button class="btn-ghost" @click="changeDir">更改</button>
+          </div>
+        </header>
+
+        <main class="app-main">
+          <section class="panel panel-left">
+            <InputPanel @tasks-added="onTasksAdded" />
+          </section>
+          <section class="panel panel-right">
+            <TaskList
+              :tasks="tasks"
+              @retry="refreshTasks"
+              @delete="refreshTasks"
+            />
+          </section>
+        </main>
       </div>
-
-
-
-    </header>
-
-    <main class="app-main">
-      <section class="panel panel-left">
-        <InputPanel @tasks-added="onTasksAdded" />
-      </section>
-      <section class="panel panel-right">
-        <TaskList
-          :tasks="tasks"
-          @retry="refreshTasks"
-          @delete="refreshTasks"
-        />
-      </section>
-    </main>
+    </Transition>
   </div>
 </template>
 
@@ -45,7 +83,26 @@ import TaskList from './components/TaskList.vue'
 const API_BASE = '/api'
 const downloadDir = ref('')
 const tasks = ref([])
+const entered = ref(false)
+const theme = ref('dark')
+const videoRef = ref(null)
 let pollTimer = null
+
+function loadTheme() {
+  try {
+    const saved = localStorage.getItem('vd_theme')
+    if (saved === 'light' || saved === 'dark') theme.value = saved
+  } catch { /* noop */ }
+}
+
+function toggleTheme() {
+  theme.value = theme.value === 'dark' ? 'light' : 'dark'
+  try { localStorage.setItem('vd_theme', theme.value) } catch { /* noop */ }
+}
+
+function enterApp() {
+  entered.value = true
+}
 
 async function getDownloadDir() {
   const res = await axios.get(`${API_BASE}/download_dir`)
@@ -134,6 +191,7 @@ function refreshTasks() {
 }
 
 onMounted(async () => {
+  loadTheme()
   await getDownloadDir()
   await fetchTasks()
 })
@@ -181,6 +239,24 @@ onUnmounted(stopPolling)
   --font-mono: "Cascadia Code", "JetBrains Mono", "SF Mono", Consolas, monospace;
 }
 
+.light {
+  --bg-app: #f0f2f5;
+  --bg-surface: rgba(255, 255, 255, 0.35);
+  --bg-card: rgba(255, 255, 255, 0.45);
+  --bg-input: rgba(0, 0, 0, 0.03);
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --border: rgba(0, 0, 0, 0.06);
+  --border-hover: rgba(0, 0, 0, 0.12);
+  --border-active: rgba(91, 154, 255, 0.5);
+  --text-primary: #1a1a2e;
+  --text-secondary: #5a6377;
+  --text-muted: #8b95a8;
+  --progress-bg: rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
 html, body {
   height: 100%;
   background: var(--bg-app);
@@ -200,13 +276,14 @@ html, body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+.light ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); }
+.light ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
 </style>
 
 <style scoped>
 .app {
   height: 100%;
-  display: flex;
-  flex-direction: column;
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 28px;
@@ -214,29 +291,129 @@ html, body {
   overflow: hidden;
 }
 
-.bg-glow {
+.app-inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.bg-video {
   position: fixed;
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  pointer-events: none;
-  filter: blur(120px);
-  opacity: 0.08;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   z-index: 0;
+  pointer-events: none;
 }
 
-.glow-1 {
-  background: var(--accent);
-  top: -200px;
-  left: -200px;
+.bg-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(10,10,15,0.7) 100%);
 }
 
-.glow-2 {
-  background: #a78bfa;
-  bottom: -300px;
-  right: -200px;
+.light .bg-vignette {
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(200,210,220,0.35) 100%);
 }
 
+/* ── Landing ── */
+.landing {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.landing-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.landing-logo {
+  width: 80px;
+  height: 80px;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(91, 154, 255, 0.3);
+}
+
+.landing-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.landing-title {
+  font-size: 40px;
+  font-weight: 300;
+  color: #fff;
+  letter-spacing: 6px;
+  text-shadow: 0 2px 30px rgba(0,0,0,0.4);
+}
+
+.light .landing-title {
+  color: var(--text-primary);
+  text-shadow: none;
+}
+
+.landing-desc {
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 3px;
+  font-weight: 300;
+}
+
+.light .landing-desc {
+  color: var(--text-muted);
+}
+
+.landing-btn {
+  margin-top: 16px;
+  padding: 12px 40px;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 100px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: rgba(255,255,255,0.9);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s;
+}
+
+.landing-btn:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.light .landing-btn {
+  border-color: rgba(0,0,0,0.15);
+  background: rgba(255,255,255,0.4);
+  color: var(--text-primary);
+}
+
+.light .landing-btn:hover {
+  background: rgba(255,255,255,0.65);
+  border-color: rgba(0,0,0,0.3);
+}
+
+/* ── Header ── */
 .app-header {
   display: flex;
   align-items: center;
@@ -244,7 +421,7 @@ html, body {
   padding: 18px 0;
   flex-shrink: 0;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .header-left {
@@ -291,6 +468,26 @@ html, body {
   gap: 8px;
 }
 
+.btn-theme {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-theme:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
 .dir-label {
   font-size: 12px;
   color: var(--text-secondary);
@@ -330,10 +527,10 @@ html, body {
   flex: 1;
   display: flex;
   gap: 20px;
-  padding: 16px 0 24px;
-  overflow: hidden;
+  padding-bottom: 28px;
+  min-height: 0;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .panel {
@@ -361,4 +558,15 @@ html, body {
   .app-main { flex-direction: column; }
   .panel-right { width: auto; max-height: 380px; }
 }
+
+/* ── Transitions ── */
+.fade-down-enter-active { transition: all 0.5s ease-out; }
+.fade-down-leave-active { transition: all 0.35s ease-in; }
+.fade-down-enter-from { opacity: 0; transform: translateY(-20px); }
+.fade-down-leave-to { opacity: 0; transform: translateY(-20px); }
+
+.fade-up-enter-active { transition: all 0.5s ease-out 0.15s; }
+.fade-up-leave-active { transition: all 0.2s ease-in; }
+.fade-up-enter-from { opacity: 0; transform: translateY(20px); }
+.fade-up-leave-to { opacity: 0; transform: translateY(-5px); }
 </style>

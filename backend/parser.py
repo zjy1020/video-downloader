@@ -31,7 +31,7 @@ def _detect_platform(url):
 
 
 TEST_FILE_URL = "https://www.python.org/static/img/python-logo.png"
-TEST_COVER_URL = "https://i0.hdslb.com/bfs/archive/9b8e7e8c6b5e1f7d3a2c4d5f6a7b8c9d0e1f2a3.jpg@412w_232h_1c.webp"
+TEST_COVER_URL = "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600"
 
 
 def _mock_bilibili(url):

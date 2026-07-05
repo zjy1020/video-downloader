@@ -48,12 +48,10 @@
 
     <Transition name="slide-up">
       <div v-if="parseResult" class="parse-result">
-        <img
-          v-if="parseResult.cover"
-          :src="proxyUrl(parseResult.cover)"
-          class="cover-img"
-          @click="previewImg = parseResult.cover"
-        />
+        <div v-if="parseResult.cover" class="cover-wrap" @click="previewImg = parseResult.cover">
+          <div class="cover-grad"></div>
+          <img :src="proxyUrl(parseResult.cover)" class="cover-img" />
+        </div>
 
         <div class="result-header">
           <div class="result-title">{{ parseResult.title || '未命名' }}</div>
@@ -202,7 +200,6 @@ function saveParseHistory(url, title) {
 
 function loadHistoryParse(item) {
   urlText.value = item.url
-  doParse()
 }
 
 function clearHistory() {
@@ -376,17 +373,45 @@ async function downloadSelected() {
   flex-direction: column;
 }
 
+.cover-wrap {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 10px;
+  cursor: pointer;
+  animation: cover-in 0.4s ease-out;
+}
+
+.cover-grad {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.4) 100%);
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.cover-wrap:hover .cover-grad {
+  opacity: 1;
+}
+
+.cover-wrap:hover .cover-img {
+  transform: scale(1.05);
+}
+
 .cover-img {
   width: 100%;
   max-height: 140px;
   object-fit: cover;
-  border-radius: var(--radius-sm);
-  margin-bottom: 10px;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  transition: transform 0.2s;
+  display: block;
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
-.cover-img:hover { transform: scale(1.01); }
+
+@keyframes cover-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
 
 .result-header {
   margin-bottom: 12px;
