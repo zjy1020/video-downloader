@@ -48,6 +48,14 @@
 
     <Transition name="slide-up">
       <div v-if="parseResult" class="parse-result">
+        <button class="btn-back" @click="backToInput">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          返回
+        </button>
+
         <div v-if="parseResult.cover" class="cover-wrap" @click="previewImg = parseResult.cover">
           <div class="cover-grad"></div>
           <img :src="proxyUrl(parseResult.cover)" class="cover-img" />
@@ -200,6 +208,13 @@ function saveParseHistory(url, title) {
 
 function loadHistoryParse(item) {
   urlText.value = item.url
+}
+
+function backToInput() {
+  parseResult.value = null
+  error.value = ''
+  selected.value = {}
+  urlText.value = ''
 }
 
 function clearHistory() {
@@ -365,6 +380,27 @@ async function downloadSelected() {
   transition: color 0.15s;
 }
 .btn-text:hover { color: var(--error); }
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  transition: all 0.15s;
+  align-self: flex-start;
+}
+
+.btn-back:hover {
+  color: var(--accent);
+  background: var(--accent-glow);
+}
 
 .parse-result {
   flex: 1;
