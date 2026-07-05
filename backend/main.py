@@ -67,6 +67,7 @@ def parse(req: ParseRequest):
         "data": {
             "title": result.get("title", ""),
             "platform": result.get("platform", ""),
+            "type": result.get("type", ""),
             "cover": result.get("cover", ""),
             "task_list": task_list,
         },
