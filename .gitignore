@@ -1,7 +1,7 @@
 node_modules/
+downloads/
+backend/tasks.json
+frontend/public/logo.png
 __pycache__/
 *.pyc
-backend/downloads/
-backend/download_config.json
-.env
-dist/
+.DS_Store
