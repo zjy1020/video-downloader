@@ -1,13 +1,15 @@
+import os
 import requests
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from parser import parse_url
-from downloader import start_download, get_progress
+from task_manager import create_task, get_task, get_all_tasks, delete_task, clear_tasks, TaskStatus
 from config import get_download_dir, set_download_dir
+from downloader import start_download
 
-app = FastAPI(title="视频解析下载工具")
+app = FastAPI(title="视频解析下载工具 V2")
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,7 +25,13 @@ class ParseRequest(BaseModel):
 
 class DownloadRequest(BaseModel):
     url: str
-    filename: str
+    title: str
+    type: str = "video"
+    cover: str = ""
+
+
+class RetryRequest(BaseModel):
+    task_id: str
 
 
 class SetDirRequest(BaseModel):
@@ -33,22 +41,109 @@ class SetDirRequest(BaseModel):
 @app.post("/parse")
 def parse(req: ParseRequest):
     result = parse_url(req.url)
-    if not result["files"]:
-        return {"code": 400, "msg": "解析失败，未找到可下载的资源", "data": result}
-    return {"code": 200, "msg": "解析成功", "data": result}
+    files = result.get("files", [])
+    if not files:
+        return {"code": 400, "msg": "解析失败，未找到可下载的资源", "data": {"task_list": []}}
+    task_list = [
+        {
+            "index": f.get("index"),
+            "title": f.get("title", "无标题"),
+            "type": f.get("type", "video"),
+            "cover": result.get("cover", ""),
+            "download_url": f.get("url", ""),
+            "size": f.get("size", 0),
+        }
+        for f in files
+    ]
+    return {
+        "code": 200,
+        "msg": "解析成功",
+        "data": {
+            "title": result.get("title", ""),
+            "platform": result.get("platform", ""),
+            "cover": result.get("cover", ""),
+            "task_list": task_list,
+        },
+    }
 
 
 @app.post("/download")
 def download(req: DownloadRequest):
     target_dir = get_download_dir()
-    task_id = start_download(req.url, req.filename, target_dir)
-    return {"code": 200, "msg": "下载已开始", "data": {"task_id": task_id}}
+    task = create_task(
+        title=req.title,
+        url=req.url,
+        type=req.type,
+        cover=req.cover,
+    )
+    os.makedirs(target_dir, exist_ok=True)
+    start_download(task, target_dir)
+    return {"code": 200, "msg": "下载已开始", "data": {"task_id": task.task_id}}
+
+
+@app.get("/tasks")
+def tasks():
+    all_tasks = get_all_tasks()
+    return {
+        "code": 200,
+        "data": [
+            {
+                "task_id": t.task_id,
+                "title": t.title,
+                "type": t.type,
+                "cover": t.cover,
+                "status": t.status,
+                "progress": t.progress,
+                "file_path": t.file_path,
+                "error": t.error,
+            }
+            for t in all_tasks
+        ],
+    }
+
+
+@app.delete("/tasks")
+def tasks_delete(scope: str = "finished"):
+    clear_tasks(scope)
+    return {"code": 200, "msg": "已清空"}
 
 
 @app.get("/download/progress/{task_id}")
 def download_progress(task_id: str):
-    data = get_progress(task_id)
-    return {"code": 200, "data": data}
+    task = get_task(task_id)
+    if not task:
+        return {"code": 404, "data": {"progress": 0, "status": "not_found"}}
+    return {
+        "code": 200,
+        "data": {
+            "progress": task.progress,
+            "status": task.status,
+            "file_path": task.file_path,
+            "error": task.error,
+        },
+    }
+
+
+@app.post("/download/retry")
+def download_retry(req: RetryRequest):
+    task = get_task(req.task_id)
+    if not task:
+        return {"code": 404, "msg": "任务不存在"}
+    if task.status != TaskStatus.FAILED:
+        return {"code": 400, "msg": "只能重试失败的任务"}
+
+    target_dir = get_download_dir()
+    from task_manager import update_task
+
+    update_task(task.task_id, status=TaskStatus.WAITING, progress=0, error=None, retry_count=0)
+    start_download(task, target_dir)
+    return {"code": 200, "msg": "已重新开始下载", "data": {"task_id": task.task_id}}
+
+
+@app.delete("/download/{task_id}")
+def download_delete(task_id: str):
+    delete_task(task_id)
+    return {"code": 200, "msg": "已删除"}
 
 
 @app.get("/download_dir")
@@ -77,4 +172,5 @@ def proxy_image(url: str = Query(...)):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="127.0.0.1", port=8000)

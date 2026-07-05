@@ -31,6 +31,7 @@ def _detect_platform(url):
 
 
 TEST_FILE_URL = "https://www.python.org/static/img/python-logo.png"
+TEST_COVER_URL = "https://i0.hdslb.com/bfs/archive/9b8e7e8c6b5e1f7d3a2c4d5f6a7b8c9d0e1f2a3.jpg@412w_232h_1c.webp"
 
 
 def _mock_bilibili(url):
@@ -38,7 +39,7 @@ def _mock_bilibili(url):
         "title": "测试B站视频标题",
         "platform": "bilibili",
         "type": "video",
-        "cover": "",
+        "cover": TEST_COVER_URL,
         "files": [
             {"index": 1, "title": "测试视频1", "url": TEST_FILE_URL, "type": "video", "size": 0},
             {"index": 2, "title": "测试视频2", "url": TEST_FILE_URL, "type": "video", "size": 0},
@@ -48,12 +49,15 @@ def _mock_bilibili(url):
 
 def _mock_douyin(url):
     return {
-        "title": "测试抖音视频标题",
+        "title": "测试抖音图文帖子",
         "platform": "douyin",
-        "type": "video",
-        "cover": "",
+        "type": "image",
+        "cover": TEST_COVER_URL,
         "files": [
-            {"index": 1, "title": "测试视频1", "url": TEST_FILE_URL, "type": "video", "size": 0},
+            {"index": 1, "title": "图片_1", "url": TEST_FILE_URL, "type": "image", "size": 0},
+            {"index": 2, "title": "图片_2", "url": TEST_FILE_URL, "type": "image", "size": 0},
+            {"index": 3, "title": "图片_3", "url": TEST_FILE_URL, "type": "image", "size": 0},
+            {"index": 4, "title": "图片_4", "url": TEST_FILE_URL, "type": "image", "size": 0},
         ]
     }
 

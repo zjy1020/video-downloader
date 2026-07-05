@@ -1,0 +1,601 @@
+<template>
+  <div class="input-panel">
+    <div class="panel-header">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
+      解析新链接
+    </div>
+
+    <div class="input-row">
+      <input
+        v-model="urlText"
+        class="url-input"
+        placeholder="粘贴抖音 / B站分享链接，按回车解析"
+        @keyup.enter="doParse"
+      />
+      <button class="btn btn-primary" :disabled="parsing" @click="doParse">
+        <span v-if="parsing" class="spinner"></span>
+        <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+        {{ parsing ? '解析中' : '解析' }}
+      </button>
+    </div>
+
+    <Transition name="fade">
+      <div v-if="parseHistory.length > 0 && !parseResult" class="parse-history">
+        <div class="history-header">
+          最近解析
+          <button class="btn-text" @click="clearHistory">清除记录</button>
+        </div>
+        <div
+          v-for="(item, i) in parseHistory"
+          :key="i"
+          class="history-item"
+          @click="loadHistoryParse(item)"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="history-ico">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span class="history-url">{{ item.url }}</span>
+          <span v-if="item.title" class="history-title">{{ item.title }}</span>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="slide-up">
+      <div v-if="parseResult" class="parse-result">
+        <img
+          v-if="parseResult.cover"
+          :src="proxyUrl(parseResult.cover)"
+          class="cover-img"
+          @click="previewImg = parseResult.cover"
+        />
+
+        <div class="result-header">
+          <div class="result-title">{{ parseResult.title || '未命名' }}</div>
+          <div class="result-meta">
+            <span class="platform-tag">{{ platformLabel }}</span>
+            <span class="count-tag">{{ parseResult.task_list.length }} 个资源</span>
+          </div>
+        </div>
+
+        <div class="file-list">
+          <div
+            v-for="item in parseResult.task_list"
+            :key="item.index"
+            class="file-item"
+            :class="{ selected: selected[item.index] }"
+            @click="toggle(item.index)"
+          >
+            <div class="file-check">
+              <div class="checkbox" :class="{ checked: selected[item.index] }">
+                <svg v-if="selected[item.index]" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+            </div>
+            <div class="file-icon">
+              <template v-if="item.type === 'image' && item.download_url">
+                <img :src="proxyUrl(item.download_url)" class="file-thumb" @click.prevent.stop="previewImg = item.download_url" />
+              </template>
+              <svg v-else-if="item.type === 'video'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="23 7 16 12 23 17 23 7" />
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+              </svg>
+              <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </div>
+            <div class="file-info">
+              <div class="file-name">{{ item.title }}</div>
+              <div v-if="item.size" class="file-size">{{ formatSize(item.size) }}</div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          class="btn btn-accent btn-download"
+          :disabled="selectedCount === 0 || downloading"
+          @click="downloadSelected"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          {{ downloading ? '添加任务中...' : `下载选中 (${selectedCount})` }}
+        </button>
+      </div>
+    </Transition>
+
+    <div v-if="parseResult && parseResult.task_list.length === 0 && !error" class="empty-result">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="empty-ico">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
+      <span>未解析到可下载的资源</span>
+    </div>
+
+    <Transition name="fade">
+      <div v-if="error" class="error-msg">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        {{ error }}
+      </div>
+    </Transition>
+
+    <Transition name="fade">
+      <div v-if="previewImg" class="preview-overlay" @click="previewImg = ''">
+        <img :src="proxyUrl(previewImg)" class="preview-img" />
+      </div>
+    </Transition>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+import axios from 'axios'
+
+const emit = defineEmits(['tasks-added'])
+const API_BASE = '/api'
+
+const urlText = ref('')
+const parsing = ref(false)
+const downloading = ref(false)
+const parseResult = ref(null)
+const error = ref('')
+const previewImg = ref('')
+const selected = ref({})
+const parseHistory = ref(loadParseHistory())
+
+const selectedCount = computed(() =>
+  Object.values(selected.value).filter(Boolean).length
+)
+
+const platformLabel = computed(() => {
+  if (!parseResult.value) return ''
+  const map = { bilibili: 'B站', douyin: '抖音' }
+  return map[parseResult.value.platform] || parseResult.value.platform
+})
+
+function proxyUrl(url) {
+  if (!url) return ''
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return `${API_BASE}/proxy/image?url=${encodeURIComponent(url)}`
+  }
+  return url
+}
+
+function formatSize(bytes) {
+  if (!bytes) return ''
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0
+  let size = bytes
+  while (size >= 1024 && i < units.length - 1) { size /= 1024; i++ }
+  return size.toFixed(1) + ' ' + units[i]
+}
+
+function toggle(index) {
+  selected.value[index] = !selected.value[index]
+}
+
+function loadParseHistory() {
+  try { return JSON.parse(localStorage.getItem('vd_parse_history') || '[]') } catch { return [] }
+}
+
+function saveParseHistory(url, title) {
+  const history = loadParseHistory()
+  history.unshift({ url, title, time: Date.now() })
+  if (history.length > 10) history.length = 10
+  localStorage.setItem('vd_parse_history', JSON.stringify(history))
+  parseHistory.value = history
+}
+
+function loadHistoryParse(item) {
+  urlText.value = item.url
+  doParse()
+}
+
+function clearHistory() {
+  localStorage.removeItem('vd_parse_history')
+  parseHistory.value = []
+}
+
+async function doParse() {
+  const text = urlText.value.trim()
+  if (!text) return
+  error.value = ''
+  parseResult.value = null
+  selected.value = {}
+  parsing.value = true
+  try {
+    const res = await axios.post(`${API_BASE}/parse`, { url: text })
+    if (res.data.code === 200) {
+      parseResult.value = res.data.data
+      saveParseHistory(text, res.data.data.title)
+      for (const item of res.data.data.task_list) {
+        selected.value[item.index] = true
+      }
+    } else {
+      error.value = res.data.msg
+    }
+  } catch (e) {
+    error.value = '解析请求失败: ' + (e.response?.data?.detail || e.message)
+  } finally {
+    parsing.value = false
+  }
+}
+
+async function downloadSelected() {
+  if (!parseResult.value || selectedCount.value === 0) return
+  downloading.value = true
+  const tasks = parseResult.value.task_list.filter((item) => selected.value[item.index])
+  try {
+    for (const item of tasks) {
+      await axios.post(`${API_BASE}/download`, {
+        url: item.download_url,
+        title: item.title,
+        type: item.type,
+        cover: item.cover,
+      })
+    }
+    emit('tasks-added')
+  } catch (e) {
+    error.value = '添加下载任务失败: ' + (e.response?.data?.detail || e.message)
+  } finally {
+    downloading.value = false
+  }
+}
+</script>
+
+<style scoped>
+.input-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.url-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.url-input::placeholder { color: var(--text-muted); }
+
+.url-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  color: #fff;
+  box-shadow: 0 2px 12px var(--accent-glow);
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 20px var(--accent-glow);
+  filter: brightness(1.1);
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  color: #fff;
+  width: 100%;
+  justify-content: center;
+  padding: 12px;
+  font-size: 14px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 12px var(--accent-glow);
+}
+
+.btn-accent:hover:not(:disabled) {
+  box-shadow: 0 4px 20px var(--accent-glow);
+  filter: brightness(1.1);
+}
+
+.btn-download { margin-top: 12px; }
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.btn-text:hover { color: var(--error); }
+
+.parse-result {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.cover-img {
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: transform 0.2s;
+}
+.cover-img:hover { transform: scale(1.01); }
+
+.result-header {
+  margin-bottom: 12px;
+}
+
+.result-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.result-meta {
+  display: flex;
+  gap: 8px;
+}
+
+.platform-tag {
+  background: var(--accent-glow);
+  color: var(--accent);
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.count-tag {
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 1px 8px;
+  background: var(--bg-input);
+  border-radius: 4px;
+}
+
+.file-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+}
+
+.file-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--border);
+}
+
+.file-item.selected {
+  border-color: var(--border-active);
+  background: var(--accent-glow);
+}
+
+.file-check { flex-shrink: 0; }
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 2px solid var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: all 0.15s;
+}
+
+.checkbox.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.file-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.file-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.file-info { flex: 1; min-width: 0; }
+
+.file-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-size {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.parse-history { margin-bottom: 10px; }
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s;
+}
+
+.history-item:hover { background: var(--bg-hover); }
+
+.history-ico { flex-shrink: 0; color: var(--text-muted); }
+
+.history-url {
+  color: var(--text-secondary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-title {
+  color: var(--text-muted);
+  font-size: 11px;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty-result {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.empty-ico { opacity: 0.3; }
+
+.error-msg {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--error-bg);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: var(--radius-sm);
+  color: var(--error);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.preview-img {
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.slide-up-enter-active { transition: all 0.25s ease-out; }
+.slide-up-leave-active { transition: all 0.15s ease-in; }
+.slide-up-enter-from { opacity: 0; transform: translateY(10px); }
+.slide-up-leave-to { opacity: 0; transform: translateY(-5px); }
+</style>

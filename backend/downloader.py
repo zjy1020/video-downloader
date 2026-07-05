@@ -1,7 +1,8 @@
 import os
 import requests
-import threading
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
+from task_manager import DownloadTask, TaskStatus, update_task
 
 BROWSER_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -9,8 +10,7 @@ BROWSER_HEADERS = {
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
 }
 
-_progress_store = {}
-_lock = threading.Lock()
+_executor = ThreadPoolExecutor(max_workers=3)
 
 
 def _get_headers(url):
@@ -40,60 +40,72 @@ def _get_extension(url, content_type):
     return ".mp4"
 
 
-def get_progress(task_id):
-    with _lock:
-        return _progress_store.get(task_id, {"progress": 0, "status": "not_found"})
+def _sanitize_filename(name):
+    for ch in '\\/:*?"<>|':
+        name = name.replace(ch, "_")
+    return name.strip()[:120]
 
 
-def _download_worker(url, filename, target_dir, task_id):
-    if not url:
-        with _lock:
-            _progress_store[task_id] = {"progress": 0, "status": "error", "message": "下载链接为空"}
-        return
-
-    os.makedirs(target_dir, exist_ok=True)
-
+def _download_worker(task: DownloadTask, target_dir: str):
     try:
-        headers = _get_headers(url)
+        update_task(task.task_id, status=TaskStatus.DOWNLOADING, progress=0)
 
-        with _lock:
-            _progress_store[task_id] = {"progress": 0, "status": "downloading"}
+        headers = _get_headers(task.url)
+        base_name = _sanitize_filename(task.title)
+        os.makedirs(target_dir, exist_ok=True)
+        temp_path = os.path.join(target_dir, f"{base_name}.download")
 
-        with requests.get(url, headers=headers, stream=True, timeout=60) as r:
-            r.raise_for_status()
-            total = int(r.headers.get("Content-Length", 0))
-            ext = _get_extension(url, r.headers.get("Content-Type", ""))
-            save_name = f"{filename}{ext}"
-            save_path = os.path.join(target_dir, save_name)
+        downloaded = 0
+        resume = False
+        if os.path.exists(temp_path):
+            downloaded = os.path.getsize(temp_path)
+            if downloaded > 0:
+                resume = True
+                headers["Range"] = f"bytes={downloaded}-"
 
-            downloaded = 0
-            with open(save_path, "wb") as f:
+        with requests.get(task.url, headers=headers, stream=True, timeout=120) as r:
+            if resume and r.status_code == 206:
+                total = int(r.headers.get("Content-Length", 0)) + downloaded
+            else:
+                r.raise_for_status()
+                total = int(r.headers.get("Content-Length", 0))
+                downloaded = 0
+
+            ext = _get_extension(task.url, r.headers.get("Content-Type", ""))
+            save_path = os.path.join(target_dir, f"{base_name}{ext}")
+
+            mode = "ab" if resume else "wb"
+            with open(temp_path, mode) as f:
                 for chunk in r.iter_content(chunk_size=65536):
                     if chunk:
                         f.write(chunk)
                         downloaded += len(chunk)
                         if total > 0:
-                            pct = downloaded / total
+                            pct = min(int(downloaded / total * 100), 100)
                         else:
                             pct = 0
-                        with _lock:
-                            _progress_store[task_id] = {
-                                "progress": round(pct, 2),
-                                "status": "downloading",
-                                "downloaded": downloaded,
-                                "total": total,
-                            }
+                        update_task(task.task_id, progress=pct)
 
-        with _lock:
-            _progress_store[task_id] = {"progress": 1.0, "status": "done", "path": save_path}
+        if os.path.exists(temp_path):
+            counter = 1
+            final_path = save_path
+            while os.path.exists(final_path):
+                base, ext = os.path.splitext(save_path)
+                final_path = f"{base}_{counter}{ext}"
+                counter += 1
+            os.rename(temp_path, final_path)
+            save_path = final_path
+
+        update_task(task.task_id, status=TaskStatus.SUCCESS, progress=100, file_path=save_path)
 
     except Exception as e:
-        with _lock:
-            _progress_store[task_id] = {"progress": 0, "status": "error", "message": str(e)}
+        if task.retry_count < task.max_retries:
+            update_task(task.task_id, status=TaskStatus.WAITING, progress=0, error=None, retry_count=task.retry_count + 1)
+            _executor.submit(_download_worker, task, target_dir)
+        else:
+            update_task(task.task_id, status=TaskStatus.FAILED, progress=0, error=str(e))
 
 
-def start_download(url, filename, target_dir):
-    task_id = str(len(_progress_store) + 1) + "_" + str(hash(url + filename))[-6:]
-    thread = threading.Thread(target=_download_worker, args=(url, filename, target_dir, task_id), daemon=True)
-    thread.start()
-    return task_id
+def start_download(task: DownloadTask, target_dir: str):
+    _executor.submit(_download_worker, task, target_dir)
+    return task.task_id

@@ -1,264 +1,364 @@
 <template>
-  <div style="max-width: 800px; margin: 40px auto; padding: 0 20px; font-family: system-ui, sans-serif;">
-    <h2>视频/图文解析下载工具</h2>
+  <div class="app">
+    <div class="bg-glow glow-1"></div>
+    <div class="bg-glow glow-2"></div>
 
-    <div style="margin: 12px 0; padding: 8px 12px; background: #f5f5f5; border-radius: 4px; display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 13px; color: #666;">下载目录:</span>
-      <code style="font-size: 13px; flex: 1;">{{ downloadDir }}</code>
-      <button @click="changeDir" style="padding: 2px 10px; cursor: pointer;">更改</button>
-    </div>
-
-    <div style="display: flex; gap: 8px; margin: 16px 0;">
-      <input
-        v-model="urlInput"
-        placeholder="粘贴抖音或B站分享链接..."
-        style="flex: 1; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;"
-        @keyup.enter="parse"
-      />
-      <button @click="parse" :disabled="parsing" style="padding: 8px 20px; cursor: pointer;">
-        {{ parsing ? '解析中...' : '解析' }}
-      </button>
-    </div>
-
-    <div v-if="parseResult" style="margin-top: 16px;">
-
-      <img
-        v-if="parseResult.cover"
-        :src="proxyUrl(parseResult.cover)"
-        @click="previewImg = parseResult.cover"
-        style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 6px; margin-bottom: 12px; cursor: pointer; border: 1px solid #ddd;"
-      />
-
-      <h4 style="margin: 0 0 12px;">{{ parseResult.title }}</h4>
-
-      <div v-if="parseResult.type === 'image'" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
-        <div v-for="file in parseResult.files" :key="file.index"
-          :style="{
-            width: 'calc(25% - 10px)',
-            minWidth: '150px',
-            border: '2px solid ' + (selected[file.index] ? '#4caf50' : '#ddd'),
-            borderRadius: '6px',
-            overflow: 'hidden',
-            cursor: 'pointer',
-            position: 'relative',
-            background: '#fafafa'
-          }"
-          @click="toggleSelect(file.index)">
-          <img :src="file.url" style="width: 100%; height: 150px; object-fit: cover; display: block;" />
-          <div style="position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; border-radius: 3px; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; font-size: 13px; border: 1px solid #999;">
-            <span v-if="selected[file.index]" style="color: #4caf50;">✓</span>
-          </div>
-          <div style="padding: 4px 6px; font-size: 11px; color: #666;">
-            {{ file.title }}
-            <span v-if="file.size"> ({{ formatSize(file.size) }})</span>
-          </div>
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo">
+          <img src="/logo.png" alt="logo" class="logo-img" />
         </div>
-        <div style="width: 100%; margin-top: 8px;">
-          <button
-            @click="downloadSelected"
-            :disabled="downloadingAll || selectedCount === 0"
-            style="padding: 8px 24px; cursor: pointer;">
-            下载选中图片 ({{ selectedCount }})
-          </button>
-        </div>
+        <h1 class="app-title">解析</h1>
+        <span class="app-badge">V2</span>
+      </div>
+      <div class="header-right">
+        <span class="dir-label">下载目录</span>
+        <code class="dir-path" :title="downloadDir">{{ downloadDir }}</code>
+        <button class="btn-ghost" @click="changeDir">更改</button>
       </div>
 
-      <div v-else>
-        <div v-for="file in parseResult.files" :key="file.index"
-          style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; margin: 6px 0; background: #fafafa; border-radius: 4px; border: 1px solid #eee;">
-          <input type="checkbox" v-model="selected[file.index]" style="cursor: pointer;" />
 
-          <span v-if="parseResult.cover && file.type === 'video'" style="flex: 1; display: flex; align-items: center; gap: 8px;">
-            <img :src="proxyUrl(parseResult.cover)" style="width: 120px; height: 68px; object-fit: cover; border-radius: 4px;" />
-            <span>
-              <div style="font-size: 14px;">▶ {{ file.title }}</div>
-              <div v-if="file.size" style="font-size: 12px; color: #888;">{{ formatSize(file.size) }}</div>
-            </span>
-          </span>
-          <span v-else style="font-size: 14px; flex: 1;">📄 {{ file.title }}</span>
 
-          <div v-if="fileProgress[file.index]" style="display: flex; align-items: center; gap: 6px; min-width: 140px;">
-            <div style="width: 80px; height: 6px; background: #e0e0e0; border-radius: 3px;">
-              <div :style="{ width: (fileProgress[file.index].progress * 100) + '%', height: '6px', background: '#4caf50', borderRadius: '3px', transition: 'width 0.3s' }"></div>
-            </div>
-            <span style="font-size: 12px; color: #666;">{{ Math.round(fileProgress[file.index].progress * 100) }}%</span>
-          </div>
-          <span v-else-if="fileDone[file.index]" style="font-size: 12px; color: #4caf50;">已完成</span>
+    </header>
 
-          <button
-            @click="download(file)"
-            :disabled="fileProgress[file.index] || fileDone[file.index]"
-            style="padding: 4px 14px; cursor: pointer; font-size: 13px;">
-            {{ fileDone[file.index] ? '已完成' : fileProgress[file.index] ? '下载中' : '下载' }}
-          </button>
-        </div>
-
-        <div v-if="parseResult.files.length > 0" style="display: flex; gap: 8px; margin-top: 10px;">
-          <button
-            @click="downloadSelected"
-            :disabled="downloadingAll || selectedCount === 0"
-            style="padding: 6px 20px; cursor: pointer;">
-            下载选中 ({{ selectedCount }})
-          </button>
-          <button
-            v-if="parseResult.files.length > 1"
-            @click="downloadAll"
-            :disabled="downloadingAll"
-            style="padding: 6px 20px; cursor: pointer;">
-            {{ downloadingAll ? '下载中...' : '下载全部' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="previewImg" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 999;" @click="previewImg = ''">
-      <img :src="previewImg" style="max-width: 90%; max-height: 90%; border-radius: 8px;" />
-    </div>
-
-    <div v-if="error" style="margin-top: 12px; padding: 8px 12px; background: #fff0f0; color: #c00; border-radius: 4px; font-size: 14px;">
-      {{ error }}
-    </div>
+    <main class="app-main">
+      <section class="panel panel-left">
+        <InputPanel @tasks-added="onTasksAdded" />
+      </section>
+      <section class="panel panel-right">
+        <TaskList
+          :tasks="tasks"
+          @retry="refreshTasks"
+          @delete="refreshTasks"
+        />
+      </section>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
+import InputPanel from './components/InputPanel.vue'
+import TaskList from './components/TaskList.vue'
 
 const API_BASE = '/api'
-
-const urlInput = ref('')
 const downloadDir = ref('')
-const parseResult = ref(null)
-const parsing = ref(false)
-const downloadingAll = ref(false)
-const error = ref('')
-const previewImg = ref('')
-const selected = ref({})
-const fileProgress = ref({})
-const fileDone = ref({})
-
-const selectedCount = computed(() => Object.values(selected.value).filter(Boolean).length)
-
-function proxyUrl(url) {
-  if (!url) return ''
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return `${API_BASE}/proxy/image?url=${encodeURIComponent(url)}`
-  }
-  return url
-}
-
-function formatSize(bytes) {
-  if (!bytes) return ''
-  const units = ['B', 'KB', 'MB', 'GB']
-  let i = 0
-  let size = bytes
-  while (size >= 1024 && i < units.length - 1) { size /= 1024; i++ }
-  return size.toFixed(1) + ' ' + units[i]
-}
-
-function toggleSelect(index) {
-  selected.value[index] = !selected.value[index]
-}
+const tasks = ref([])
+let pollTimer = null
 
 async function getDownloadDir() {
   const res = await axios.get(`${API_BASE}/download_dir`)
   downloadDir.value = res.data.path
 }
 
-async function changeDir() {
-  const path = prompt('输入下载目录路径：', downloadDir.value)
-  if (path) {
-    await axios.post(`${API_BASE}/set_download_dir`, { path })
+function setDir(path) {
+  if (!path) return
+  axios.post(`${API_BASE}/set_download_dir`, { path }).then(() => {
     downloadDir.value = path
-  }
+  }).catch((e) => {
+    alert('设置目录失败: ' + (e.response?.data?.detail || e.message))
+  })
 }
 
-async function parse() {
-  if (!urlInput.value.trim()) return
-  error.value = ''
-  parseResult.value = null
-  previewImg.value = ''
-  selected.value = {}
-  fileProgress.value = {}
-  fileDone.value = {}
-  parsing.value = true
+async function changeDir() {
   try {
-    const res = await axios.post(`${API_BASE}/parse`, { url: urlInput.value })
-    if (res.data.code === 200) {
-      parseResult.value = res.data.data
-      for (const f of res.data.data.files) {
-        selected.value[f.index] = true
+    const dirHandle = await window.showDirectoryPicker({ mode: 'read' })
+    let found = false
+    for await (const entry of dirHandle.values()) {
+      if (entry.kind === 'file') {
+        const file = await entry.getFile()
+        if (file.path) {
+          setDir(file.path.slice(0, -(entry.name.length)))
+          found = true
+          break
+        }
       }
-    } else {
-      error.value = res.data.msg
     }
-  } catch (e) {
-    error.value = '解析请求失败: ' + (e.response?.data?.detail || e.message)
-  } finally {
-    parsing.value = false
+    if (!found) {
+      const path = prompt('无法获取完整路径，请手动输入下载目录：', downloadDir.value)
+      if (path) setDir(path.trim())
+    }
+  } catch {
+    const path = prompt('输入下载目录路径：', downloadDir.value)
+    if (path) setDir(path.trim())
   }
 }
 
-async function pollProgress(taskId, fileIndex) {
-  const poll = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/download/progress/${taskId}`)
-      const d = res.data.data
-      fileProgress.value[fileIndex] = d
-      if (d.status === 'done') {
-        delete fileProgress.value[fileIndex]
-        fileDone.value[fileIndex] = true
-        return
-      }
-      if (d.status === 'error') {
-        delete fileProgress.value[fileIndex]
-        error.value = d.message
-        return
-      }
-      setTimeout(poll, 500)
-    } catch {
-      setTimeout(poll, 500)
-    }
-  }
-  poll()
-}
-
-async function download(file) {
+function saveTasksToCache(data) {
   try {
-    const res = await axios.post(`${API_BASE}/download`, { url: file.url, filename: file.title })
-    if (res.data.code === 200) {
-      const taskId = res.data.data.task_id
-      pollProgress(taskId, file.index)
-    } else {
-      error.value = res.data.msg
+    localStorage.setItem('vd_tasks_cache', JSON.stringify(data))
+  } catch { /* noop */ }
+}
+
+function loadTasksFromCache() {
+  try {
+    const cached = localStorage.getItem('vd_tasks_cache')
+    if (cached) {
+      tasks.value = JSON.parse(cached).filter(
+        (t) => t.status === 'success' || t.status === 'failed'
+      )
     }
-  } catch (e) {
-    error.value = '下载请求失败: ' + (e.response?.data?.detail || e.message)
+  } catch { /* noop */ }
+}
+
+async function fetchTasks() {
+  try {
+    const res = await axios.get(`${API_BASE}/tasks`)
+    tasks.value = res.data.data
+    saveTasksToCache(res.data.data)
+  } catch {
+    loadTasksFromCache()
   }
 }
 
-async function downloadSelected() {
-  if (!parseResult.value) return
-  downloadingAll.value = true
-  for (const file of parseResult.value.files) {
-    if (selected.value[file.index] && !fileDone.value[file.index]) {
-      await download(file)
-    }
-  }
-  downloadingAll.value = false
+function startPolling() {
+  stopPolling()
+  pollTimer = setInterval(fetchTasks, 800)
 }
 
-async function downloadAll() {
-  if (!parseResult.value) return
-  downloadingAll.value = true
-  for (const file of parseResult.value.files) {
-    if (!fileDone.value[file.index]) {
-      await download(file)
-    }
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
   }
-  downloadingAll.value = false
 }
 
-onMounted(getDownloadDir)
+function onTasksAdded() {
+  fetchTasks()
+  startPolling()
+}
+
+function refreshTasks() {
+  fetchTasks()
+}
+
+onMounted(async () => {
+  await getDownloadDir()
+  await fetchTasks()
+})
+
+onUnmounted(stopPolling)
 </script>
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-app: #0a0a0f;
+  --bg-surface: rgba(255, 255, 255, 0.03);
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-input: rgba(255, 255, 255, 0.05);
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.15);
+  --border-active: rgba(91, 154, 255, 0.5);
+  --accent: #5b9aff;
+  --accent-hover: #7bb0ff;
+  --accent-glow: rgba(91, 154, 255, 0.2);
+  --text-primary: #e8ecf4;
+  --text-secondary: #8b95a8;
+  --text-muted: #5a6377;
+  --success: #34d399;
+  --success-bg: rgba(52, 211, 153, 0.12);
+  --warning: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.12);
+  --error: #f87171;
+  --error-bg: rgba(248, 113, 113, 0.12);
+  --info: #60a5fa;
+  --progress-bg: rgba(255, 255, 255, 0.08);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --font: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", "SF Mono", Consolas, monospace;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+#app {
+  height: 100%;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+</style>
+
+<style scoped>
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-glow {
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(120px);
+  opacity: 0.08;
+  z-index: 0;
+}
+
+.glow-1 {
+  background: var(--accent);
+  top: -200px;
+  left: -200px;
+}
+
+.glow-2 {
+  background: #a78bfa;
+  bottom: -300px;
+  right: -200px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 0;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(91, 154, 255, 0.3);
+}
+
+.logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.app-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+.app-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-glow);
+  padding: 1px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dir-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.dir-path {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+}
+
+.btn-ghost {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  padding: 16px 0 24px;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  overflow: auto;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-md);
+}
+
+.panel-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-right {
+  width: 420px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 860px) {
+  .app-main { flex-direction: column; }
+  .panel-right { width: auto; max-height: 380px; }
+}
+</style>
