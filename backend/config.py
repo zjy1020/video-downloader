@@ -1,15 +1,25 @@
 import json
 import os
+import sys
 
-CONFIG_FILE = os.path.join(os.path.dirname(__file__), "download_config.json")
-DEFAULT_DIR = os.path.join(os.path.dirname(__file__), "downloads")
+
+def _get_base_dir():
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(__file__)
+
+
+CONFIG_FILE = os.path.join(_get_base_dir(), "download_config.json")
+DEFAULT_DIR = os.path.join(_get_base_dir(), "downloads")
 
 
 def _load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {}
+    default = {"download_dir": DEFAULT_DIR}
+    _save_config(default)
+    return default
 
 
 def _save_config(data):

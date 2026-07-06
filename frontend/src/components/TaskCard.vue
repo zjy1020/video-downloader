@@ -109,7 +109,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['retry', 'delete'])
-const API_BASE = '/api'
+import { API_BASE } from '../lib/api.js'
 
 const speedBytesPerSec = ref(0)
 const lastBytes = ref(0)

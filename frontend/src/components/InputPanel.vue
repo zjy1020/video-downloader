@@ -182,7 +182,7 @@ const props = defineProps({
   clipboardUrl: { type: String, default: '' },
 })
 const emit = defineEmits(['tasks-added'])
-const API_BASE = '/api'
+import { API_BASE } from '../lib/api.js'
 
 const urlText = ref('')
 const parsing = ref(false)

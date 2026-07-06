@@ -63,7 +63,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['retry', 'delete'])
-const API_BASE = '/api'
+import { API_BASE } from '../lib/api.js'
 
 const activeTab = ref('all')
 

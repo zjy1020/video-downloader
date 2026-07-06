@@ -2,6 +2,9 @@ node_modules/
 downloads/
 backend/tasks.json
 frontend/public/logo.png
+frontend/dist/
+frontend/src-tauri/target/
+frontend/src-tauri/binaries/*.exe
 __pycache__/
 *.pyc
 .DS_Store

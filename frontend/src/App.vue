@@ -5,8 +5,21 @@
     </video>
     <div class="bg-vignette"></div>
 
+    <!-- Loading -->
+    <div v-if="showLoading" class="loading-overlay">
+      <div class="loading-box">
+        <img src="/logo.png" alt="logo" class="loading-logo" />
+        <div v-if="backendLoading" class="loading-spinner"></div>
+        <p class="loading-status">正在启动后端服务...</p>
+        <div v-if="backendError" class="loading-error-box">
+          <p class="loading-error">{{ backendError }}</p>
+          <button class="loading-retry" @click="retryBackend">重试</button>
+        </div>
+      </div>
+    </div>
+
     <Transition name="landing-leave">
-      <div v-if="!entered" class="landing">
+      <div v-if="showLanding" class="landing">
         <div class="landing-content">
           <div class="landing-logo">
             <img src="/logo.png" alt="logo" class="landing-logo-img" />
@@ -86,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 import InputPanel from './components/InputPanel.vue'
 import TaskList from './components/TaskList.vue'
@@ -94,7 +107,8 @@ import ClipboardMonitor from './components/ClipboardMonitor.vue'
 import DownloadStats from './components/DownloadStats.vue'
 import { useStats } from './composables/useStats.js'
 
-const API_BASE = '/api'
+import { API_BASE } from './lib/api.js'
+
 const downloadDir = ref('')
 const tasks = ref([])
 const entered = ref(false)
@@ -104,8 +118,46 @@ const urlInput = ref('')
 const inputPanelKey = ref(0)
 const stats = useStats()
 let pollTimer = null
-let prevTasks = {} // keyed by task_id, for detecting new completions
-const completedNotif = ref(null) // { title, platform }
+let prevTasks = {}
+const completedNotif = ref(null)
+
+const backendReady = ref(false)
+const backendLoading = ref(true)
+const backendError = ref('')
+let healthTimer = null
+
+const showLoading = computed(() => !backendReady.value && !backendError.value)
+const showLanding = computed(() => backendReady.value && !entered.value)
+
+function startHealthCheck() {
+  healthTimer = setInterval(async () => {
+    try {
+      await axios.get(`${API_BASE}/health`, { timeout: 2000 })
+      backendReady.value = true
+      backendLoading.value = false
+      clearInterval(healthTimer)
+      healthTimer = null
+      getDownloadDir()
+      fetchTasks()
+    } catch {
+      // keep waiting
+    }
+  }, 500)
+  setTimeout(() => {
+    if (!backendReady.value) {
+      clearInterval(healthTimer)
+      healthTimer = null
+      backendLoading.value = false
+      backendError.value = '后端服务启动超时，请检查防火墙或重试'
+    }
+  }, 20000)
+}
+
+function retryBackend() {
+  backendError.value = ''
+  backendLoading.value = true
+  startHealthCheck()
+}
 
 function loadTheme() {
   try {
@@ -207,10 +259,9 @@ function refreshTasks() {
   fetchTasks()
 }
 
-onMounted(async () => {
+onMounted(() => {
   loadTheme()
-  await getDownloadDir()
-  await fetchTasks()
+  startHealthCheck()
 })
 
 onUnmounted(stopPolling)
@@ -341,6 +392,84 @@ html, body {
 
 .light .bg-vignette {
   background: radial-gradient(ellipse at center, transparent 50%, rgba(200,210,220,0.3) 100%);
+}
+
+/* ── Loading ── */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-box {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.loading-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(91, 154, 255, 0.3);
+}
+
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(255,255,255,0.1);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-status {
+  font-size: 14px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 1px;
+}
+
+.light .loading-status {
+  color: var(--text-muted);
+}
+
+.loading-error-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.loading-error {
+  font-size: 14px;
+  color: var(--error);
+}
+
+.loading-retry {
+  padding: 8px 24px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.loading-retry:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
 }
 
 /* ── Landing ── */
