@@ -102,4 +102,4 @@ npx tauri build
 
 MIT License
 
-Copyright (c) 2026 likeLBY
+Copyright (c) 2026 ZJY1020
