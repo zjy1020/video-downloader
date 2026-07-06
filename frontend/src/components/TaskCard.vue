@@ -106,8 +106,8 @@ const emit = defineEmits(['retry', 'delete'])
 const API_BASE = '/api'
 
 const thumbSrc = computed(() => {
-  if (props.task.type === 'image' && props.task.status === 'success' && props.task.task_id) {
-    return `${API_BASE}/download/file/${props.task.task_id}`
+  if (props.task.type === 'image' && props.task.url) {
+    return proxyUrl(props.task.url)
   }
   if (props.task.cover) {
     return proxyUrl(props.task.cover)
