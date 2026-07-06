@@ -1,10 +1,8 @@
 <template>
-  <div class="task-card" :class="statusClass">
-    <div class="card-left">
-    <div v-if="thumbSrc" class="card-thumb">
-      <img :src="thumbSrc" />
-    </div>
-      <div v-else class="card-thumb card-thumb-placeholder">
+  <div class="task-card" :class="statusClass" :data-task-id="task.task_id">
+    <div class="card-thumb">
+      <img v-if="thumbSrc" :src="thumbSrc" />
+      <div v-else class="thumb-placeholder">
         <svg v-if="task.type === 'video'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="23 7 16 12 23 17 23 7" />
           <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
@@ -18,12 +16,9 @@
     </div>
 
     <div class="card-body">
-      <div class="card-title-row">
+      <div class="card-top">
         <span class="card-title" :title="task.title">{{ task.title }}</span>
-        <span class="status-badge" :class="'status-' + task.status">
-          <span class="status-dot" :class="'dot-' + task.status"></span>
-          {{ statusLabel }}
-        </span>
+        <span class="status-icon" :class="'icon-' + task.status">{{ statusIcon }}</span>
       </div>
 
       <div v-if="task.status === 'downloading' || task.status === 'waiting'" class="card-progress-area">
@@ -113,9 +108,14 @@ const thumbSrc = computed(() => {
   return ''
 })
 
-const statusLabel = computed(() => {
-  const map = { waiting: '等待中', downloading: '下载中', success: '已完成', failed: '失败' }
-  return map[props.task.status] || props.task.status
+const statusIcon = computed(() => {
+  const map = {
+    waiting: '○',
+    downloading: '⬇',
+    success: '✓',
+    failed: '✖',
+  }
+  return map[props.task.status] || ''
 })
 
 const statusClass = computed(() => 'card-' + props.task.status)
@@ -155,14 +155,15 @@ async function openFolder() {
 <style scoped>
 .task-card {
   display: flex;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 14px 16px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  min-height: 0;
 }
 
 .task-card::before {
@@ -183,17 +184,18 @@ async function openFolder() {
 .task-card:hover {
   border-color: var(--border-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
 }
 
-.card-left { flex-shrink: 0; }
-
+/* ── Thumbnail ── */
 .card-thumb {
-  width: 72px;
-  height: 48px;
-  border-radius: var(--radius-sm);
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
   overflow: hidden;
-  background: var(--bg-input);
+  background: var(--bg-hover);
+  flex-shrink: 0;
+  align-self: flex-start;
 }
 
 .card-thumb img {
@@ -202,69 +204,56 @@ async function openFolder() {
   object-fit: cover;
 }
 
-.card-thumb-placeholder {
+.thumb-placeholder {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
 }
 
+/* ── Body ── */
 .card-body {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.card-title-row {
+.card-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
 }
 
 .card-title {
   flex: 1;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--text-primary);
-  white-space: nowrap;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-all;
 }
 
-.status-badge {
+.status-icon {
   flex-shrink: 0;
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  font-size: 15px;
+  line-height: 1;
+  margin-top: 1px;
 }
 
-.status-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-}
+.icon-waiting { color: var(--warning); }
+.icon-downloading { color: var(--accent); }
+.icon-success { color: var(--success); }
+.icon-failed { color: var(--error); }
 
-.dot-waiting { background: var(--warning); }
-.dot-downloading { background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
-.dot-success { background: var(--success); }
-.dot-failed { background: var(--error); }
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-.status-waiting { background: var(--warning-bg); color: var(--warning); }
-.status-downloading { background: var(--accent-glow); color: var(--accent); }
-.status-success { background: var(--success-bg); color: var(--success); }
-.status-failed { background: var(--error-bg); color: var(--error); }
-
+/* ── Progress ── */
 .card-progress-area {
   display: flex;
   align-items: center;
@@ -273,15 +262,15 @@ async function openFolder() {
 
 .progress-bar {
   flex: 1;
-  height: 5px;
+  height: 4px;
   background: var(--progress-bg);
-  border-radius: 3px;
+  border-radius: 2px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 2px;
   transition: width 0.3s ease;
 }
 
@@ -320,9 +309,10 @@ async function openFolder() {
   min-width: 36px;
   text-align: right;
   font-family: var(--font-mono);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
+/* ── Error ── */
 .card-error {
   font-size: 11px;
   color: var(--error);
@@ -334,25 +324,28 @@ async function openFolder() {
   gap: 4px;
 }
 
+/* ── Actions ── */
 .card-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .btn-icon {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 11px;
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
   background: transparent;
   color: var(--text-secondary);
-  transition: all 0.15s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-icon:hover {
@@ -387,5 +380,16 @@ async function openFolder() {
   color: var(--error);
   background: var(--error-bg);
   border-color: rgba(248, 113, 113, 0.25);
+}
+
+/* ── Success bounce animation ── */
+.card-success .status-icon {
+  animation: bounce-in 0.4s cubic-bezier(0.68, -0.15, 0.27, 1.15);
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); opacity: 1; }
 }
 </style>

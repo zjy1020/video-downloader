@@ -111,7 +111,7 @@ const filteredTasks = computed(() => {
 
 .panel-header {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border);
@@ -161,12 +161,12 @@ const filteredTasks = computed(() => {
 
 .filter-tab {
   flex: 1;
-  padding: 5px 0;
+  padding: 6px 0;
   border: none;
   background: transparent;
   color: var(--text-muted);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.15s;
@@ -187,8 +187,9 @@ const filteredTasks = computed(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding-top: 2px;
+  gap: 8px;
+  padding-top: 4px;
+  padding-bottom: 2px;
 }
 
 .empty-state {
@@ -198,7 +199,7 @@ const filteredTasks = computed(() => {
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  gap: 6px;
+  gap: 8px;
 }
 
 .empty-ico { opacity: 0.3; }
@@ -215,7 +216,7 @@ const filteredTasks = computed(() => {
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.15s;
+  transition: opacity 0.2s;
 }
 .fade-enter-from,
 .fade-leave-to {
@@ -223,20 +224,21 @@ const filteredTasks = computed(() => {
 }
 
 .list-enter-active {
-  transition: all 0.25s ease-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .list-leave-active {
-  transition: all 0.15s ease-in;
+  transition: all 0.2s ease-in;
+  position: absolute;
 }
 .list-enter-from {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(12px);
 }
 .list-leave-to {
   opacity: 0;
-  transform: translateX(10px);
+  transform: translateX(16px) scale(0.96);
 }
 .list-move {
-  transition: transform 0.2s ease;
+  transition: transform 0.25s ease;
 }
 </style>

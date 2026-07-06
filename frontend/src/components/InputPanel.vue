@@ -360,7 +360,8 @@ async function downloadSelected() {
 
 .url-input {
   flex: 1;
-  padding: 10px 14px;
+  height: 52px;
+  padding: 0 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-input);
@@ -370,7 +371,9 @@ async function downloadSelected() {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.url-input::placeholder { color: var(--text-muted); }
+.url-input::placeholder {
+  color: var(--text-dim);
+}
 
 .url-input:focus {
   border-color: var(--accent);
@@ -381,8 +384,8 @@ async function downloadSelected() {
   padding: 10px 18px;
   border: none;
   border-radius: var(--radius-sm);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
   transition: all 0.2s;
   display: inline-flex;
@@ -394,14 +397,25 @@ async function downloadSelected() {
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn-primary {
+  height: 52px;
+  padding: 0 28px;
   background: linear-gradient(135deg, var(--accent), #7c3aed);
   color: #fff;
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
   box-shadow: 0 2px 12px var(--accent-glow);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 4px 20px var(--accent-glow);
+  box-shadow: 0 6px 24px var(--accent-glow);
   filter: brightness(1.1);
+  transform: scale(1.02);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 0.08s;
 }
 
 .btn-accent {
@@ -409,15 +423,23 @@ async function downloadSelected() {
   color: #fff;
   width: 100%;
   justify-content: center;
-  padding: 12px;
-  font-size: 14px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
   border-radius: var(--radius-sm);
   box-shadow: 0 2px 12px var(--accent-glow);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-accent:hover:not(:disabled) {
-  box-shadow: 0 4px 20px var(--accent-glow);
+  box-shadow: 0 6px 24px var(--accent-glow);
   filter: brightness(1.1);
+  transform: scale(1.02);
+}
+
+.btn-accent:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 0.08s;
 }
 
 .btn-download { margin-top: 8px; }
@@ -576,7 +598,8 @@ async function downloadSelected() {
 }
 
 @keyframes cover-in {
-  from { opacity: 0; transform: scale(0.95); }
+  from { opacity: 0; transform: scale(0.92); }
+  60% { transform: scale(1.03); }
   to { opacity: 1; transform: scale(1); }
 }
 

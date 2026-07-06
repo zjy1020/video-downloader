@@ -5,7 +5,7 @@
     </video>
     <div class="bg-vignette"></div>
 
-    <Transition name="fade-down">
+    <Transition name="landing-leave">
       <div v-if="!entered" class="landing">
         <div class="landing-content">
           <div class="landing-logo">
@@ -24,7 +24,7 @@
       </div>
     </Transition>
 
-    <Transition name="fade-up">
+    <Transition name="app-enter">
       <div v-if="entered" class="app-inner">
         <header class="app-header">
           <div class="header-left">
@@ -207,13 +207,13 @@ onUnmounted(stopPolling)
 }
 
 :root {
-  --bg-app: #0a0a0f;
-  --bg-surface: rgba(255, 255, 255, 0.03);
-  --bg-card: rgba(255, 255, 255, 0.04);
-  --bg-input: rgba(255, 255, 255, 0.05);
+  --bg-app: #08080c;
+  --bg-surface: rgba(255, 255, 255, 0.04);
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-input: transparent;
   --bg-hover: rgba(255, 255, 255, 0.06);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.15);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-hover: rgba(255, 255, 255, 0.14);
   --border-active: rgba(91, 154, 255, 0.5);
   --accent: #5b9aff;
   --accent-hover: #7bb0ff;
@@ -221,6 +221,7 @@ onUnmounted(stopPolling)
   --text-primary: #e8ecf4;
   --text-secondary: #8b95a8;
   --text-muted: #5a6377;
+  --text-dim: rgba(138, 149, 168, 0.45);
   --success: #34d399;
   --success-bg: rgba(52, 211, 153, 0.12);
   --warning: #fbbf24;
@@ -228,7 +229,7 @@ onUnmounted(stopPolling)
   --error: #f87171;
   --error-bg: rgba(248, 113, 113, 0.12);
   --info: #60a5fa;
-  --progress-bg: rgba(255, 255, 255, 0.08);
+  --progress-bg: rgba(255, 255, 255, 0.06);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -237,13 +238,16 @@ onUnmounted(stopPolling)
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
   --font: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
   --font-mono: "Cascadia Code", "JetBrains Mono", "SF Mono", Consolas, monospace;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
 }
 
 .light {
-  --bg-app: #f0f2f5;
-  --bg-surface: rgba(255, 255, 255, 0.35);
-  --bg-card: rgba(255, 255, 255, 0.45);
-  --bg-input: rgba(0, 0, 0, 0.03);
+  --bg-app: #e8ecf0;
+  --bg-surface: rgba(255, 255, 255, 0.55);
+  --bg-card: rgba(255, 255, 255, 0.6);
+  --bg-input: transparent;
   --bg-hover: rgba(0, 0, 0, 0.04);
   --border: rgba(0, 0, 0, 0.06);
   --border-hover: rgba(0, 0, 0, 0.12);
@@ -251,6 +255,7 @@ onUnmounted(stopPolling)
   --text-primary: #1a1a2e;
   --text-secondary: #3f4759;
   --text-muted: #6b758b;
+  --text-dim: rgba(107, 117, 139, 0.45);
   --progress-bg: rgba(0, 0, 0, 0.04);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -263,6 +268,7 @@ html, body {
   color: var(--text-primary);
   font-family: var(--font);
   font-size: 14px;
+  font-weight: var(--font-weight-normal);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
@@ -274,11 +280,11 @@ html, body {
 
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
 
-.light ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); }
-.light ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+.light ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); }
+.light ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.18); }
 </style>
 
 <style scoped>
@@ -305,6 +311,7 @@ html, body {
   object-fit: cover;
   z-index: 0;
   pointer-events: none;
+  filter: brightness(0.85);
 }
 
 .bg-vignette {
@@ -312,11 +319,11 @@ html, body {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(10,10,15,0.7) 100%);
+  background: radial-gradient(ellipse at center, transparent 35%, rgba(8,8,12,0.75) 100%);
 }
 
 .light .bg-vignette {
-  background: radial-gradient(ellipse at center, transparent 50%, rgba(200,210,220,0.35) 100%);
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(200,210,220,0.3) 100%);
 }
 
 /* ── Landing ── */
@@ -350,6 +357,12 @@ html, body {
   height: 100%;
   object-fit: contain;
   display: block;
+  animation: logo-init 0.8s ease-out forwards;
+}
+
+@keyframes logo-init {
+  from { transform: rotate(-5deg) scale(0.92); opacity: 0; }
+  to { transform: rotate(0deg) scale(1); opacity: 1; }
 }
 
 .landing-title {
@@ -452,14 +465,14 @@ html, body {
 
 .app-title {
   font-size: 17px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
   letter-spacing: -0.3px;
 }
 
 .app-badge {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--accent);
   background: var(--accent-glow);
   padding: 1px 7px;
@@ -501,7 +514,7 @@ html, body {
 .dir-path {
   font-size: 11px;
   color: var(--text-muted);
-  background: var(--bg-input);
+  background: var(--bg-hover);
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   max-width: 280px;
@@ -544,9 +557,9 @@ html, body {
   border-radius: var(--radius-lg);
   padding: 20px;
   overflow: auto;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-sm);
 }
 
 .panel-left {
@@ -568,13 +581,13 @@ html, body {
 }
 
 /* ── Transitions ── */
-.fade-down-enter-active { transition: all 0.5s ease-out; }
-.fade-down-leave-active { transition: all 0.35s ease-in; }
-.fade-down-enter-from { opacity: 0; transform: translateY(-20px); }
-.fade-down-leave-to { opacity: 0; transform: translateY(-20px); }
+.landing-leave-enter-active { transition: all 0.5s ease-out; }
+.landing-leave-leave-active { transition: all 0.35s ease-in; }
+.landing-leave-enter-from { opacity: 0; transform: translateY(-20px); }
+.landing-leave-leave-to { opacity: 0; transform: translateY(-20px); }
 
-.fade-up-enter-active { transition: all 0.5s ease-out 0.15s; }
-.fade-up-leave-active { transition: all 0.2s ease-in; }
-.fade-up-enter-from { opacity: 0; transform: translateY(20px); }
-.fade-up-leave-to { opacity: 0; transform: translateY(-5px); }
+.app-enter-enter-active { transition: all 0.5s ease-out 0.15s; }
+.app-enter-leave-active { transition: all 0.2s ease-in; }
+.app-enter-enter-from { opacity: 0; transform: translateY(24px); }
+.app-enter-leave-to { opacity: 0; transform: translateY(-5px); }
 </style>
