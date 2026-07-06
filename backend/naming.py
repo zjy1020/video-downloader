@@ -1,5 +1,6 @@
 import os
 import re
+import threading
 from urllib.parse import urlparse
 
 
@@ -34,6 +35,34 @@ def get_extension(url: str, content_type: str = "") -> str:
     return ".mp4"
 
 
+_album_cache: dict[tuple[str, str], str] = {}
+_album_cache_lock = threading.Lock()
+
+
+def resolve_album_path(target_dir: str, album_title: str) -> str:
+    key = (target_dir, album_title)
+    with _album_cache_lock:
+        if key in _album_cache:
+            return _album_cache[key]
+        safe = sanitize_filename(album_title)
+        path = os.path.join(target_dir, safe)
+        if not os.path.exists(path):
+            _album_cache[key] = path
+            return path
+        counter = 1
+        while True:
+            path = os.path.join(target_dir, f"{safe} ({counter})")
+            if not os.path.exists(path):
+                _album_cache[key] = path
+                return path
+            counter += 1
+
+
+def clear_album_cache():
+    with _album_cache_lock:
+        _album_cache.clear()
+
+
 def resolve_video_path(target_dir: str, title: str, ext: str = ".mp4") -> str:
     safe = sanitize_filename(title)
     path = os.path.join(target_dir, f"{safe}{ext}")
@@ -42,19 +71,6 @@ def resolve_video_path(target_dir: str, title: str, ext: str = ".mp4") -> str:
     counter = 1
     while True:
         path = os.path.join(target_dir, f"{safe} ({counter}){ext}")
-        if not os.path.exists(path):
-            return path
-        counter += 1
-
-
-def resolve_album_path(target_dir: str, album_title: str) -> str:
-    safe = sanitize_filename(album_title)
-    path = os.path.join(target_dir, safe)
-    if not os.path.exists(path):
-        return path
-    counter = 1
-    while True:
-        path = os.path.join(target_dir, f"{safe} ({counter})")
         if not os.path.exists(path):
             return path
         counter += 1

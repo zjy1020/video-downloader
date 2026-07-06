@@ -123,6 +123,8 @@ def tasks():
 @app.delete("/tasks")
 def tasks_delete(scope: str = "finished"):
     clear_tasks(scope)
+    from naming import clear_album_cache
+    clear_album_cache()
     return {"code": 200, "msg": "已清空"}
 
 
