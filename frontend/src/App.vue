@@ -190,7 +190,14 @@ function setDir(path) {
 }
 
 async function changeDir() {
-  const path = prompt('输入下载目录路径：', downloadDir.value)
+  let path = null
+  if (window.__TAURI_INTERNALS__) {
+    const { open } = await import('@tauri-apps/plugin-dialog')
+    const selected = await open({ directory: true, multiple: false, title: '选择下载目录' })
+    if (selected) path = selected
+  } else {
+    path = prompt('输入下载目录路径：', downloadDir.value)
+  }
   if (path) setDir(path.trim())
 }
 

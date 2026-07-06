@@ -17,6 +17,8 @@
           "sidecar": true
         }
       ]
-    }
+    },
+    "dialog:default",
+    "dialog:allow-open"
   ]
 }

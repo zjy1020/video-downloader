@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "视频解析下载",
   "version": "0.1.0",
-  "identifier": "com.video-downloader.app",
+  "identifier": "com.video-downloader.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:3000",
