@@ -142,7 +142,10 @@ function remove() {
 
 async function openFolder() {
   try {
-    await axios.post(`${API_BASE}/download/open-folder/${props.task.task_id}`)
+    const res = await axios.post(`${API_BASE}/download/open-folder/${props.task.task_id}`)
+    if (res.data.code !== 200) {
+      console.error('打开文件夹失败:', res.data.msg)
+    }
   } catch (e) {
     console.error('打开文件夹失败', e)
   }

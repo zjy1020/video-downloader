@@ -557,6 +557,9 @@ html, body {
 .panel-right {
   width: 420px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 @media (max-width: 860px) {
