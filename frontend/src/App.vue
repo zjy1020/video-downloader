@@ -172,8 +172,8 @@ async function fetchTasks() {
     for (const t of data) {
       const prev = prevTasks[t.task_id]
       if (t.status === 'success' && prev && prev.status !== 'success') {
-        completedNotif.value = { title: t.title, platform: t.type === 'video' ? 'bilibili' : 'douyin' }
-        stats.recordDownload(t.type === 'video' ? 'bilibili' : 'douyin', t.total_bytes)
+        completedNotif.value = { title: t.title, platform: t.platform }
+        stats.recordDownload(t.platform || 'unknown', t.total_bytes)
         setTimeout(() => { completedNotif.value = null }, 5000)
       }
     }

@@ -29,6 +29,7 @@ class DownloadRequest(BaseModel):
     title: str
     type: str = "video"
     cover: str = ""
+    platform: str = "unknown"
     mode: str = "auto"
     threads: int = 4
     album_title: str = ""
@@ -86,6 +87,7 @@ def download(req: DownloadRequest):
         url=req.url,
         type=req.type,
         cover=req.cover,
+        platform=req.platform,
         album_title=req.album_title,
         index_in_album=req.index,
         total_in_album=req.total,
@@ -111,6 +113,7 @@ def tasks():
                 "progress": t.progress,
                 "file_path": t.file_path,
                 "error": t.error,
+                "platform": t.platform,
                 "album_title": t.album_title,
                 "index_in_album": t.index_in_album,
                 "total_in_album": t.total_in_album,

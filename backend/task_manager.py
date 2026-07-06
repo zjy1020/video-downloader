@@ -30,6 +30,7 @@ class DownloadTask:
     error: Optional[str] = None
     retry_count: int = 0
     max_retries: int = 1
+    platform: str = "unknown"
     album_title: str = ""
     index_in_album: int = 0
     total_in_album: int = 0
@@ -59,6 +60,7 @@ def _save_tasks():
                 "error": t.error,
                 "retry_count": t.retry_count,
                 "max_retries": t.max_retries,
+                "platform": t.platform,
                 "album_title": t.album_title,
                 "index_in_album": t.index_in_album,
                 "total_in_album": t.total_in_album,
@@ -85,7 +87,7 @@ def _load_tasks():
             _task_store[task.task_id] = task
 
 
-def create_task(title: str, url: str, type: str, cover: str = "", album_title: str = "", index_in_album: int = 0, total_in_album: int = 0) -> DownloadTask:
+def create_task(title: str, url: str, type: str, cover: str = "", platform: str = "unknown", album_title: str = "", index_in_album: int = 0, total_in_album: int = 0) -> DownloadTask:
     task_id = str(uuid.uuid4())[:8]
     task = DownloadTask(
         task_id=task_id,
@@ -93,6 +95,7 @@ def create_task(title: str, url: str, type: str, cover: str = "", album_title: s
         url=url,
         type=type,
         cover=cover,
+        platform=platform,
         album_title=album_title,
         index_in_album=index_in_album,
         total_in_album=total_in_album,

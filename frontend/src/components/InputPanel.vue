@@ -327,6 +327,7 @@ async function downloadSelected() {
         title: item.title,
         type: item.type,
         cover: item.cover,
+        platform: parseResult.value.platform || 'unknown',
         mode: dlMode.value,
         threads: dlThreads.value,
         album_title: parseResult.value.title,
