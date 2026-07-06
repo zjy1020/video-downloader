@@ -1,8 +1,8 @@
 import os
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urlparse
 from task_manager import DownloadTask, TaskStatus, update_task
+from naming import sanitize_filename, get_extension, resolve_video_path, resolve_album_path, image_filename
 
 BROWSER_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -25,28 +25,25 @@ def _get_headers(url):
     return headers
 
 
-def _get_extension(url, content_type):
-    if content_type:
-        mapping = {
-            "video/mp4": ".mp4",
-            "image/jpeg": ".jpg",
-            "image/png": ".png",
-            "image/webp": ".webp",
-        }
-        for mime, ext in mapping.items():
-            if mime in content_type:
-                return ext
-    path = urlparse(url).path
-    _, ext = os.path.splitext(path)
-    if ext and len(ext) <= 5:
-        return ext
-    return ".mp4"
-
-
-def _sanitize_filename(name):
-    for ch in '\\/:*?"<>|':
-        name = name.replace(ch, "_")
-    return name.strip()[:120]
+def _probe(url, headers):
+    total_size = 0
+    content_type = ""
+    try:
+        resp = _session.head(url, headers=headers, timeout=10)
+        if resp.status_code == 200:
+            total_size = int(resp.headers.get("Content-Length", 0))
+            content_type = resp.headers.get("Content-Type", "")
+    except Exception:
+        pass
+    if total_size == 0:
+        try:
+            probe = _session.get(url, headers=headers, stream=True, timeout=10)
+            total_size = int(probe.headers.get("Content-Length", 0))
+            content_type = probe.headers.get("Content-Type", "")
+            probe.close()
+        except Exception:
+            pass
+    return total_size, content_type
 
 
 def _download_part(url, headers, start, end, part_path):
@@ -75,7 +72,7 @@ def _download_sequential(task, url, headers, temp_path):
             total = int(r.headers.get("Content-Length", 0))
             downloaded = 0
 
-        ext = _get_extension(url, r.headers.get("Content-Type", ""))
+        ext = get_extension(url, r.headers.get("Content-Type", ""))
         mode = "ab" if downloaded else "wb"
         with open(temp_path, mode) as f:
             for chunk in r.iter_content(chunk_size=1048576):
@@ -87,111 +84,76 @@ def _download_sequential(task, url, headers, temp_path):
         return ext
 
 
+def _download_parallel(task, url, headers, temp_path, total_size, parts, ext):
+    part_dir = os.path.join(os.path.dirname(temp_path), f".{task.task_id}_parts")
+    os.makedirs(part_dir, exist_ok=True)
+    part_size = total_size // parts
+
+    ranges = []
+    for i in range(parts):
+        start = i * part_size
+        end = (start + part_size - 1) if i < parts - 1 else ""
+        ranges.append((start, end))
+
+    part_paths = []
+    with ThreadPoolExecutor(max_workers=parts) as pool:
+        futures = {}
+        for i, (s, e) in enumerate(ranges):
+            pp = os.path.join(part_dir, f"part_{i}")
+            part_paths.append(pp)
+            futures[pool.submit(_download_part, url, headers, s, e, pp)] = i
+
+        done = 0
+        for f in as_completed(futures):
+            f.result()
+            done += 1
+            update_task(task.task_id, progress=int(done / parts * 100))
+
+    with open(temp_path, "wb") as out:
+        for pp in sorted(part_paths):
+            with open(pp, "rb") as pf:
+                out.write(pf.read())
+
+    for pp in part_paths:
+        os.remove(pp)
+    os.rmdir(part_dir)
+    return ext
+
+
+def _resolve_final_path(task, target_dir, ext):
+    if task.type == "image" and task.album_title:
+        album_folder = resolve_album_path(target_dir, task.album_title)
+        os.makedirs(album_folder, exist_ok=True)
+        return os.path.join(album_folder, image_filename(task.index_in_album, task.total_in_album, ext))
+    return resolve_video_path(target_dir, task.title, ext)
+
+
 def _download_worker(task: DownloadTask, target_dir: str, mode: str = "auto", threads: int = 4):
     try:
         update_task(task.task_id, status=TaskStatus.DOWNLOADING, progress=0)
 
         headers = _get_headers(task.url)
-        base_name = _sanitize_filename(task.title)
+        total_size, content_type = _probe(task.url, headers)
+
         os.makedirs(target_dir, exist_ok=True)
-        temp_path = os.path.join(target_dir, f"{base_name}.download")
-
-        total_size = 0
-        try:
-            resp = _session.head(task.url, headers=headers, timeout=10)
-            if resp.status_code == 200:
-                total_size = int(resp.headers.get("Content-Length", 0))
-        except Exception:
-            pass
-
-        if total_size == 0:
-            try:
-                probe = _session.get(task.url, headers=headers, stream=True, timeout=10)
-                total_size = int(probe.headers.get("Content-Length", 0))
-                probe.close()
-            except Exception:
-                pass
+        temp_path = os.path.join(target_dir, f".{task.task_id}.download")
 
         if mode == "sequential":
             update_task(task.task_id, progress=1 if total_size > 0 else -1)
             ext = _download_sequential(task, task.url, headers, temp_path)
 
         elif mode == "parallel" and total_size > 0:
-            ext = _get_extension(task.url, "")
+            ext = get_extension(task.url, content_type)
             try:
-                parts = max(threads, 1)
-                part_dir = os.path.join(target_dir, f"{base_name}_parts")
-                os.makedirs(part_dir, exist_ok=True)
-                part_size = total_size // parts
-
-                ranges = []
-                for i in range(parts):
-                    start = i * part_size
-                    end = (start + part_size - 1) if i < parts - 1 else ""
-                    ranges.append((start, end))
-
-                part_paths = []
-                with ThreadPoolExecutor(max_workers=parts) as pool:
-                    futures = {}
-                    for i, (s, e) in enumerate(ranges):
-                        pp = os.path.join(part_dir, f"part_{i}")
-                        part_paths.append(pp)
-                        futures[pool.submit(_download_part, task.url, headers, s, e, pp)] = i
-
-                    done = 0
-                    for f in as_completed(futures):
-                        f.result()
-                        done += 1
-                        update_task(task.task_id, progress=int(done / parts * 100))
-
-                with open(temp_path, "wb") as out:
-                    for pp in sorted(part_paths):
-                        with open(pp, "rb") as pf:
-                            out.write(pf.read())
-
-                for pp in part_paths:
-                    os.remove(pp)
-                os.rmdir(part_dir)
+                _download_parallel(task, task.url, headers, temp_path, total_size, max(threads, 1), ext)
             except Exception:
                 ext = _download_sequential(task, task.url, headers, temp_path)
 
         else:
             if total_size >= 5 * 1024 * 1024:
-                ext = _get_extension(task.url, "")
+                ext = get_extension(task.url, content_type)
                 try:
-                    parts = 4
-                    part_dir = os.path.join(target_dir, f"{base_name}_parts")
-                    os.makedirs(part_dir, exist_ok=True)
-                    part_size = total_size // parts
-
-                    ranges = []
-                    for i in range(parts):
-                        start = i * part_size
-                        end = (start + part_size - 1) if i < parts - 1 else ""
-                        ranges.append((start, end))
-
-                    part_paths = []
-                    with ThreadPoolExecutor(max_workers=parts) as pool:
-                        futures = {}
-                        for i, (s, e) in enumerate(ranges):
-                            pp = os.path.join(part_dir, f"part_{i}")
-                            part_paths.append(pp)
-                            futures[pool.submit(_download_part, task.url, headers, s, e, pp)] = i
-
-                        done = 0
-                        for f in as_completed(futures):
-                            f.result()
-                            done += 1
-                            update_task(task.task_id, progress=int(done / parts * 100))
-
-                    with open(temp_path, "wb") as out:
-                        for pp in sorted(part_paths):
-                            with open(pp, "rb") as pf:
-                                out.write(pf.read())
-
-                    for pp in part_paths:
-                        os.remove(pp)
-                    os.rmdir(part_dir)
+                    _download_parallel(task, task.url, headers, temp_path, total_size, 4, ext)
                 except Exception:
                     ext = _download_sequential(task, task.url, headers, temp_path)
             elif total_size > 0:
@@ -201,14 +163,10 @@ def _download_worker(task: DownloadTask, target_dir: str, mode: str = "auto", th
                 update_task(task.task_id, progress=-1)
                 ext = _download_sequential(task, task.url, headers, temp_path)
 
-        save_path = os.path.join(target_dir, f"{base_name}{ext}")
+        final_path = _resolve_final_path(task, target_dir, ext)
 
-        counter = 1
-        final_path = save_path
-        while os.path.exists(final_path):
-            base, ext = os.path.splitext(save_path)
-            final_path = f"{base}_{counter}{ext}"
-            counter += 1
+        if os.path.exists(final_path):
+            os.remove(final_path)
         os.rename(temp_path, final_path)
 
         update_task(task.task_id, status=TaskStatus.SUCCESS, progress=100, file_path=final_path)
@@ -219,6 +177,10 @@ def _download_worker(task: DownloadTask, target_dir: str, mode: str = "auto", th
             _executor.submit(_download_worker, task, target_dir)
         else:
             update_task(task.task_id, status=TaskStatus.FAILED, progress=0, error=str(e))
+    finally:
+        temp_path = os.path.join(target_dir, f".{task.task_id}.download")
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
 def start_download(task: DownloadTask, target_dir: str, mode: str = "auto", threads: int = 4):

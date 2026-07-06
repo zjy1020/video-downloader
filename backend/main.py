@@ -31,6 +31,9 @@ class DownloadRequest(BaseModel):
     cover: str = ""
     mode: str = "auto"
     threads: int = 4
+    album_title: str = ""
+    index: int = 0
+    total: int = 0
 
 
 class RetryRequest(BaseModel):
@@ -83,6 +86,9 @@ def download(req: DownloadRequest):
         url=req.url,
         type=req.type,
         cover=req.cover,
+        album_title=req.album_title,
+        index_in_album=req.index,
+        total_in_album=req.total,
     )
     os.makedirs(target_dir, exist_ok=True)
     start_download(task, target_dir, mode=req.mode, threads=req.threads)
@@ -105,6 +111,9 @@ def tasks():
                 "progress": t.progress,
                 "file_path": t.file_path,
                 "error": t.error,
+                "album_title": t.album_title,
+                "index_in_album": t.index_in_album,
+                "total_in_album": t.total_in_album,
             }
             for t in all_tasks
         ],

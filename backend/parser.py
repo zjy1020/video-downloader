@@ -269,10 +269,6 @@ def _parse_douyin(url, quality=None):
         except Exception:
             continue
 
-    result = _parse_douyin_quality(url, "normal")
-    if result:
-        return result
-
     return _mock_douyin(url)
 
 

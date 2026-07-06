@@ -319,6 +319,9 @@ async function downloadSelected() {
         cover: item.cover,
         mode: dlMode.value,
         threads: dlThreads.value,
+        album_title: parseResult.value.title,
+        index: item.index,
+        total: parseResult.value.task_list.length,
       })
     }
     emit('tasks-added')

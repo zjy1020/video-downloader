@@ -30,6 +30,9 @@ class DownloadTask:
     error: Optional[str] = None
     retry_count: int = 0
     max_retries: int = 1
+    album_title: str = ""
+    index_in_album: int = 0
+    total_in_album: int = 0
     created_at: float = field(default_factory=time.time)
 
 
@@ -52,6 +55,9 @@ def _save_tasks():
                 "error": t.error,
                 "retry_count": t.retry_count,
                 "max_retries": t.max_retries,
+                "album_title": t.album_title,
+                "index_in_album": t.index_in_album,
+                "total_in_album": t.total_in_album,
                 "created_at": t.created_at,
             }
             for t in _task_store.values()
@@ -71,7 +77,7 @@ def _load_tasks():
             _task_store[task.task_id] = task
 
 
-def create_task(title: str, url: str, type: str, cover: str = "") -> DownloadTask:
+def create_task(title: str, url: str, type: str, cover: str = "", album_title: str = "", index_in_album: int = 0, total_in_album: int = 0) -> DownloadTask:
     task_id = str(uuid.uuid4())[:8]
     task = DownloadTask(
         task_id=task_id,
@@ -79,6 +85,9 @@ def create_task(title: str, url: str, type: str, cover: str = "") -> DownloadTas
         url=url,
         type=type,
         cover=cover,
+        album_title=album_title,
+        index_in_album=index_in_album,
+        total_in_album=total_in_album,
     )
     with _task_lock:
         _task_store[task_id] = task
