@@ -1,6 +1,8 @@
 import re
 import requests
 import uuid
+import logging
+logger = logging.getLogger('parser')
 
 BILIBILI_API = "https://api.bugpk.com/api/bilibili"
 DOUYIN_API = "https://api.bugpk.com/api/douyin"
@@ -149,7 +151,8 @@ def _parse_bilibili_native(url, quality):
             "files": files,
             "quality": str(qn),
         }
-    except Exception:
+    except Exception as e:
+        logger.warning(f"B站 native 解析失败: {e}")
         return None
 
 
@@ -211,7 +214,8 @@ def _parse_bilibili(url, quality=None):
                 "cover": raw.get("cover", ""),
                 "files": files,
             }
-        except Exception:
+        except Exception as e:
+            logger.warning(f"bugpk B站 解析失败: {e}")
             continue
     return _mock_bilibili(url)
 
@@ -266,7 +270,8 @@ def _parse_douyin(url, quality=None):
                 "cover": raw.get("cover", ""),
                 "files": files,
             }
-        except Exception:
+        except Exception as e:
+            logger.warning(f"bugpk 抖音 解析失败: {e}")
             continue
 
     return _mock_douyin(url)
