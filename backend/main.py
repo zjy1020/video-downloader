@@ -190,6 +190,17 @@ def proxy_image(url: str = Query(...)):
     return StreamingResponse(r.iter_content(chunk_size=65536), media_type=ct)
 
 
+@app.get("/download/file/{task_id}")
+def download_file(task_id: str):
+    task = get_task(task_id)
+    if not task or not task.file_path or not os.path.isfile(task.file_path):
+        return {"code": 404, "msg": "文件不存在"}
+    filename = os.path.basename(task.file_path)
+    ct = "image/png" if task.type == "image" else "video/mp4"
+    headers = {"Content-Disposition": f'inline; filename="{filename}"'}
+    return StreamingResponse(open(task.file_path, "rb"), media_type=ct, headers=headers)
+
+
 if __name__ == "__main__":
     import uvicorn
 

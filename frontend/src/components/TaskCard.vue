@@ -143,9 +143,7 @@ function remove() {
 }
 
 function openFile() {
-  if (props.task.file_path) {
-    window.open('file:///' + props.task.file_path.replace(/\\/g, '/'))
-  }
+  window.open(`${API_BASE}/download/file/${props.task.task_id}`, '_blank')
 }
 </script>
 
