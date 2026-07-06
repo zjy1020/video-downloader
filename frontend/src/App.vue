@@ -55,7 +55,6 @@
               <img src="/logo.png" alt="logo" class="logo-img" />
             </div>
             <h1 class="app-title">解析</h1>
-            <span class="app-badge">V2</span>
           </div>
           <div class="header-right">
             <button class="btn-theme" @click="toggleTheme" :title="theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'">
@@ -621,16 +620,6 @@ html, body {
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
   letter-spacing: -0.3px;
-}
-
-.app-badge {
-  font-size: 10px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--accent);
-  background: var(--accent-glow);
-  padding: 1px 7px;
-  border-radius: 6px;
-  letter-spacing: 0.5px;
 }
 
 .header-right {
