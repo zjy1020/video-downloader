@@ -185,11 +185,15 @@ const filteredTasks = computed(() => {
 .task-scroll {
   flex: 1;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 4px;
-  padding-bottom: 2px;
+  padding: 4px 0 2px;
+}
+
+.task-scroll > :deep(.task-card) {
+  margin-bottom: 8px;
+}
+
+.task-scroll > :deep(.task-card:last-child) {
+  margin-bottom: 0;
 }
 
 .empty-state {

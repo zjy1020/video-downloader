@@ -240,7 +240,7 @@ async function openFolder() {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
-  min-height: 0;
+  flex-shrink: 0;
 }
 
 .task-card::before {
