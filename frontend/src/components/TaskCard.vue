@@ -1,9 +1,9 @@
 <template>
   <div class="task-card" :class="statusClass">
     <div class="card-left">
-      <div v-if="task.cover" class="card-thumb">
-        <img :src="proxyUrl(task.cover)" />
-      </div>
+    <div v-if="thumbSrc" class="card-thumb">
+      <img :src="thumbSrc" />
+    </div>
       <div v-else class="card-thumb card-thumb-placeholder">
         <svg v-if="task.type === 'video'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="23 7 16 12 23 17 23 7" />
@@ -104,6 +104,16 @@ const props = defineProps({
 
 const emit = defineEmits(['retry', 'delete'])
 const API_BASE = '/api'
+
+const thumbSrc = computed(() => {
+  if (props.task.type === 'image' && props.task.status === 'success' && props.task.task_id) {
+    return `${API_BASE}/download/file/${props.task.task_id}`
+  }
+  if (props.task.cover) {
+    return proxyUrl(props.task.cover)
+  }
+  return ''
+})
 
 const statusLabel = computed(() => {
   const map = { waiting: '等待中', downloading: '下载中', success: '已完成', failed: '失败' }

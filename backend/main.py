@@ -2,7 +2,7 @@ import os
 import requests
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from parser import parse_url
 from task_manager import create_task, get_task, get_all_tasks, delete_task, clear_tasks, TaskStatus
@@ -169,6 +169,17 @@ BROWSER_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Referer": "https://www.bilibili.com",
 }
+
+
+@app.get("/download/file/{task_id}")
+def download_file(task_id: str):
+    from download_manager import get_task
+
+    task = get_task(task_id)
+    if not task or not task.file_path or not os.path.isfile(task.file_path):
+        return {"code": 404, "msg": "文件不存在"}
+    ct = "image/png" if task.type == "image" else "video/mp4"
+    return FileResponse(task.file_path, media_type=ct)
 
 
 @app.get("/proxy/image")
