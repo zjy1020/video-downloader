@@ -87,7 +87,7 @@
 
     <Transition name="modal">
       <div v-if="detailVisible" class="detail-overlay" @click.self="hideDetail">
-        <div class="detail-card" :class="'card-' + task.status" @click.stop>
+        <div class="detail-modal" @click.stop>
           <button class="detail-close" @click="hideDetail">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -95,88 +95,76 @@
             </svg>
           </button>
 
-          <div class="detail-card-inner">
-            <div class="detail-card-thumb">
-              <img v-if="thumbSrc" :src="thumbSrc" />
-              <div v-else class="thumb-placeholder">
-                <svg v-if="task.type === 'video'" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polygon points="23 7 16 12 23 17 23 7" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                </svg>
-                <svg v-else width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
+          <div class="detail-media">
+            <img v-if="thumbSrc" :src="thumbSrc" class="detail-img" />
+            <div v-else class="detail-placeholder">
+              <svg v-if="task.type === 'video'" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="23 7 16 12 23 17 23 7" />
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+              </svg>
+              <svg v-else width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="detail-body">
+            <h2 class="detail-title">{{ task.title }}</h2>
+
+            <div class="detail-row">
+              <span class="detail-label">类型</span>
+              <span class="detail-value">{{ task.type === 'video' ? '视频' : '图片' }}</span>
+            </div>
+
+            <div class="detail-row">
+              <span class="detail-label">状态</span>
+              <span class="detail-value">
+                <span class="status-icon" :class="'icon-' + task.status" style="margin-right:4px">{{ statusIcon }}</span>
+                {{ statusLabel }}
+              </span>
+            </div>
+
+            <div v-if="task.status === 'downloading' || task.status === 'waiting'" class="detail-row">
+              <span class="detail-label">进度</span>
+              <span class="detail-value">{{ task.progress >= 0 ? task.progress + '%' : '未知' }}</span>
+            </div>
+
+            <div v-if="task.status === 'downloading' || task.status === 'waiting'" class="detail-progress">
+              <div class="progress-bar">
+                <div v-if="task.progress >= 0" class="progress-fill" :style="{ width: task.progress + '%' }"></div>
+                <div v-else class="progress-indeterminate"></div>
               </div>
             </div>
 
-            <div class="detail-card-body">
-              <div class="detail-card-top">
-                <span class="detail-card-title">{{ task.title }}</span>
-                <span class="status-icon" :class="'icon-' + task.status">{{ statusIcon }}</span>
-              </div>
+            <div v-if="task.error" class="detail-row">
+              <span class="detail-label">错误</span>
+              <span class="detail-value detail-error">{{ task.error }}</span>
+            </div>
 
-              <div v-if="task.status === 'downloading' || task.status === 'waiting'" class="detail-progress-area">
-                <div class="progress-bar">
-                  <div v-if="task.progress >= 0" class="progress-fill" :style="{ width: task.progress + '%' }"></div>
-                  <div v-else class="progress-indeterminate"></div>
-                </div>
-                <span class="progress-text">{{ task.progress >= 0 ? task.progress + '%' : '...' }}</span>
-              </div>
+            <div v-if="task.file_path" class="detail-row">
+              <span class="detail-label">路径</span>
+              <span class="detail-value detail-path" :title="task.file_path">{{ task.file_path }}</span>
+            </div>
 
-              <div v-if="task.error" class="detail-card-error">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                {{ task.error }}
-              </div>
+            <div class="detail-row">
+              <span class="detail-label">ID</span>
+              <span class="detail-value detail-mono">{{ task.task_id }}</span>
+            </div>
 
-              <div v-if="task.file_path" class="detail-card-meta">
-                <span class="meta-label">路径</span>
-                <span class="meta-value" :title="task.file_path">{{ task.file_path }}</span>
-              </div>
-
-              <div class="detail-card-meta">
-                <span class="meta-label">ID</span>
-                <span class="meta-value meta-mono">{{ task.task_id }}</span>
-              </div>
-
-              <div class="detail-card-actions">
-                <button
-                  v-if="task.status === 'failed'"
-                  class="btn-icon btn-retry"
-                  @click="retry"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="23 4 23 10 17 10" />
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                  </svg>
-                  重试
-                </button>
-                <button
-                  v-if="task.status === 'success'"
-                  class="btn-icon btn-open"
-                  @click="openFolder"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                  </svg>
-                  打开文件夹
-                </button>
-                <button
-                  class="btn-icon btn-delete"
-                  @click="remove; hideDetail()"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  </svg>
-                  删除
-                </button>
-              </div>
+            <div class="detail-actions">
+              <button
+                v-if="task.status === 'failed'"
+                class="btn-icon btn-retry"
+                @click="retry"
+              >重试</button>
+              <button
+                v-if="task.status === 'success'"
+                class="btn-icon btn-open"
+                @click="openFolder"
+              >打开文件夹</button>
+              <button class="btn-icon btn-delete" @click="remove; hideDetail()">删除</button>
             </div>
           </div>
         </div>
@@ -499,7 +487,7 @@ async function openFolder() {
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* ── Detail Modal (enlarged card) ── */
+/* ── Detail Modal ── */
 .detail-overlay {
   position: fixed;
   inset: 0;
@@ -509,40 +497,28 @@ async function openFolder() {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
 }
 
-.detail-card {
-  background: var(--bg-card);
+.detail-modal {
+  background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  width: 580px;
+  width: 480px;
   max-width: 90vw;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.35);
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
   position: relative;
-  overflow: visible;
+  display: flex;
+  flex-direction: column;
 }
-
-.detail-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-}
-.detail-card.card-success::before { background: var(--success); }
-.detail-card.card-downloading::before { background: var(--accent); }
-.detail-card.card-failed::before { background: var(--error); }
-.detail-card.card-waiting::before { background: var(--warning); }
 
 .detail-close {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 34px;
-  height: 34px;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--bg-card);
@@ -560,125 +536,91 @@ async function openFolder() {
   border-color: var(--border-hover);
 }
 
-.detail-card-inner {
-  display: flex;
-  gap: 24px;
-  padding: 24px 28px;
-}
-
-.detail-card-thumb {
-  width: 180px;
-  height: 180px;
-  border-radius: 14px;
+.detail-media {
+  width: 100%;
+  height: 220px;
   overflow: hidden;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   background: var(--bg-hover);
-  flex-shrink: 0;
-  align-self: flex-start;
-}
-
-.detail-card-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.detail-card-thumb .thumb-placeholder {
-  width: 100%;
-  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
 }
 
-.detail-card-body {
-  flex: 1;
-  min-width: 0;
+.detail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-placeholder svg {
+  opacity: 0.3;
+}
+
+.detail-body {
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
-.detail-card-top {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.detail-card-title {
-  flex: 1;
-  font-size: 18px;
+.detail-title {
+  font-size: 17px;
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
   line-height: 1.45;
   word-break: break-all;
 }
 
-.detail-card-top .status-icon {
-  font-size: 20px;
-  margin-top: 2px;
-}
-
-.detail-progress-area {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.detail-progress-area .progress-bar {
-  height: 6px;
-}
-
-.detail-progress-area .progress-text {
-  font-size: 14px;
-  min-width: 42px;
-}
-
-.detail-card-error {
-  font-size: 13px;
-  color: var(--error);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  line-height: 1.4;
-}
-
-.detail-card-meta {
+.detail-row {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 12px;
 }
 
-.meta-label {
+.detail-label {
   flex-shrink: 0;
+  width: 48px;
   font-size: 12px;
   color: var(--text-muted);
-  padding-top: 2px;
+  padding-top: 1px;
 }
 
-.meta-value {
-  font-size: 12px;
+.detail-value {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+}
+
+.detail-error {
+  color: var(--error);
+}
+
+.detail-path {
+  font-size: 11px;
   color: var(--text-secondary);
   word-break: break-all;
-  line-height: 1.4;
-}
-
-.meta-mono {
   font-family: var(--font-mono);
-  font-size: 11px;
 }
 
-.detail-card-actions {
+.detail-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.detail-progress {
+  margin: -4px 0;
+}
+
+.detail-actions {
   display: flex;
   gap: 8px;
-  margin-top: 4px;
-}
-
-.detail-card-actions .btn-icon {
-  padding: 8px 18px;
-  font-size: 13px;
-  border-radius: 8px;
-  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
 }
 
 .modal-enter-active {
