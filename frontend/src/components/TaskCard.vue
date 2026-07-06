@@ -275,22 +275,16 @@ async function openFolder() {
 }
 
 .card-downloading .progress-fill {
-  background: linear-gradient(90deg, var(--accent), #7c3aed);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  background: var(--accent);
+  transition: width 0.3s ease;
 }
 
 .progress-indeterminate {
   height: 100%;
   width: 35%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent), #7c3aed);
-  animation: indeterminate 1s ease-in-out infinite;
+  background: var(--accent);
+  animation: indeterminate 0.8s ease-in-out infinite;
 }
 
 @keyframes indeterminate {

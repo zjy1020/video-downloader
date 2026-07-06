@@ -399,7 +399,7 @@ async function downloadSelected() {
 .btn-primary {
   height: 52px;
   padding: 0 28px;
-  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  background: var(--accent);
   color: #fff;
   font-size: 15px;
   font-weight: var(--font-weight-semibold);
@@ -409,7 +409,7 @@ async function downloadSelected() {
 
 .btn-primary:hover:not(:disabled) {
   box-shadow: 0 6px 24px var(--accent-glow);
-  filter: brightness(1.1);
+  filter: brightness(1.15);
   transform: scale(1.02);
 }
 
@@ -419,7 +419,7 @@ async function downloadSelected() {
 }
 
 .btn-accent {
-  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  background: var(--accent);
   color: #fff;
   width: 100%;
   justify-content: center;
