@@ -201,6 +201,18 @@ def download_file(task_id: str):
     return StreamingResponse(open(task.file_path, "rb"), media_type=ct, headers=headers)
 
 
+@app.post("/download/open-folder/{task_id}")
+def open_folder(task_id: str):
+    task = get_task(task_id)
+    if not task or not task.file_path or not os.path.isfile(task.file_path):
+        return {"code": 404, "msg": "文件不存在"}
+    import subprocess
+    subprocess.Popen(["explorer", "/select,", os.path.normpath(task.file_path)])
+    return {"code": 200, "msg": "已打开文件夹"}
+
+
+import subprocess
+
 if __name__ == "__main__":
     import uvicorn
 

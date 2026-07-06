@@ -58,14 +58,12 @@
         <button
           v-if="task.status === 'success'"
           class="btn-icon btn-open"
-          @click="openFile"
+          @click="openFolder"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-            <polyline points="15 3 21 3 21 9" />
-            <line x1="10" y1="14" x2="21" y2="3" />
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
           </svg>
-          打开文件
+          打开文件夹
         </button>
         <button
           v-if="task.status === 'waiting' || task.status === 'failed'"
@@ -142,8 +140,12 @@ function remove() {
   emit('delete', props.task.task_id)
 }
 
-function openFile() {
-  window.open(`${API_BASE}/download/file/${props.task.task_id}`, '_blank')
+async function openFolder() {
+  try {
+    await axios.post(`${API_BASE}/download/open-folder/${props.task.task_id}`)
+  } catch (e) {
+    console.error('打开文件夹失败', e)
+  }
 }
 </script>
 
@@ -331,7 +333,9 @@ function openFile() {
 
 .card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .btn-icon {
