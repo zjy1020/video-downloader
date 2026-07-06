@@ -85,10 +85,9 @@
       </div>
     </div>
 
-    <Transition name="modal">
-      <div v-if="detailVisible" class="detail-overlay" @click.self="hideDetail">
-        <div class="detail-card" :class="'card-' + task.status" @click.stop>
-          <button class="detail-close" @click="hideDetail">
+    <div v-if="detailVisible" class="detail-overlay" @click.self="hideDetail" :style="{ opacity: overlayVisible ? 1 : 0 }">
+      <div class="detail-card" :class="'card-' + task.status" @click.stop :style="{ transform: overlayVisible ? 'scale(1)' : 'scale(0.95)', opacity: overlayVisible ? 1 : 0 }">
+        <button class="detail-close" @click="hideDetail">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -181,7 +180,7 @@
           </div>
         </div>
       </div>
-    </Transition>
+    </div>
   </div>
 </template>
 
@@ -196,6 +195,17 @@ const props = defineProps({
 const emit = defineEmits(['retry', 'delete'])
 const API_BASE = '/api'
 const detailVisible = ref(false)
+const overlayVisible = ref(false)
+
+function showDetail() {
+  detailVisible.value = true
+  requestAnimationFrame(() => { overlayVisible.value = true })
+}
+
+function hideDetail() {
+  overlayVisible.value = false
+  setTimeout(() => { detailVisible.value = false }, 150)
+}
 
 const thumbSrc = computed(() => {
   if (props.task.type === 'image' && props.task.url) {
@@ -230,14 +240,6 @@ function proxyUrl(url) {
     return `${API_BASE}/proxy/image?url=${encodeURIComponent(url)}`
   }
   return url
-}
-
-function showDetail() {
-  detailVisible.value = true
-}
-
-function hideDetail() {
-  detailVisible.value = false
 }
 
 async function retry() {
@@ -681,25 +683,10 @@ async function openFolder() {
   gap: 6px;
 }
 
-.modal-enter-active {
-  transition: opacity 0.2s ease-out;
+.detail-overlay {
+  transition: opacity 0.15s ease-out;
 }
-.modal-enter-active .detail-modal {
-  animation: modal-pop 0.2s ease-out;
-}
-.modal-leave-active {
-  transition: opacity 0.12s ease-in;
-}
-.modal-leave-active .detail-modal {
-  animation: modal-pop 0.12s ease-in reverse;
-}
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-@keyframes modal-pop {
-  from { transform: scale(0.92); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+.detail-card {
+  transition: transform 0.15s ease-out, opacity 0.15s ease-out;
 }
 </style>
