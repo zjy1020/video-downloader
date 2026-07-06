@@ -89,7 +89,7 @@ function formatSize(bytes) {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 16px;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }

@@ -113,7 +113,7 @@ const filteredTasks = computed(() => {
   font-size: 14px;
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
-  padding: 12px 0 10px;
+  padding: 8px 0 10px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
