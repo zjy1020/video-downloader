@@ -410,7 +410,6 @@ async function downloadSelected() {
 .btn-primary:hover:not(:disabled) {
   box-shadow: 0 6px 24px var(--accent-glow);
   filter: brightness(1.15);
-  transform: scale(1.02);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -433,8 +432,12 @@ async function downloadSelected() {
 
 .btn-accent:hover:not(:disabled) {
   box-shadow: 0 6px 24px var(--accent-glow);
-  filter: brightness(1.1);
-  transform: scale(1.02);
+  filter: brightness(1.15);
+}
+
+.btn-accent:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 0.08s;
 }
 
 .btn-accent:active:not(:disabled) {

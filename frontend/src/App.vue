@@ -119,27 +119,8 @@ function setDir(path) {
 }
 
 async function changeDir() {
-  try {
-    const dirHandle = await window.showDirectoryPicker({ mode: 'read' })
-    let found = false
-    for await (const entry of dirHandle.values()) {
-      if (entry.kind === 'file') {
-        const file = await entry.getFile()
-        if (file.path) {
-          setDir(file.path.slice(0, -(entry.name.length)))
-          found = true
-          break
-        }
-      }
-    }
-    if (!found) {
-      const path = prompt('无法获取完整路径，请手动输入下载目录：', downloadDir.value)
-      if (path) setDir(path.trim())
-    }
-  } catch {
-    const path = prompt('输入下载目录路径：', downloadDir.value)
-    if (path) setDir(path.trim())
-  }
+  const path = prompt('输入下载目录路径：', downloadDir.value)
+  if (path) setDir(path.trim())
 }
 
 function saveTasksToCache(data) {

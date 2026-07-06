@@ -321,8 +321,7 @@ async function openFolder() {
 /* ── Actions ── */
 .card-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
   margin-top: 2px;
 }
