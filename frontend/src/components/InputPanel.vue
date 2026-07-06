@@ -72,6 +72,9 @@
               </select>
               <span class="quality-hint" title="列出的清晰度为可选上限，视频本身若不支持会自动降级到最高可用画质">ⓘ</span>
             </span>
+            <button class="select-all-btn" @click="toggleAll" :class="{ active: allSelected }">
+              {{ allSelected ? '取消全选' : '全选' }}
+            </button>
           </div>
         </div>
 
@@ -215,6 +218,24 @@ watch(() => props.clipboardUrl, (url) => {
 const selectedCount = computed(() =>
   Object.values(selected.value).filter(Boolean).length
 )
+
+const allSelected = computed(() => {
+  if (!parseResult.value) return false
+  return parseResult.value.task_list.length > 0 &&
+    parseResult.value.task_list.every(item => selected.value[item.index])
+})
+
+function toggleAll() {
+  if (allSelected.value) {
+    for (const item of parseResult.value.task_list) {
+      selected.value[item.index] = false
+    }
+  } else {
+    for (const item of parseResult.value.task_list) {
+      selected.value[item.index] = true
+    }
+  }
+}
 
 const platformLabel = computed(() => {
   if (!parseResult.value) return ''
@@ -632,6 +653,8 @@ async function downloadSelected() {
 .result-meta {
   display: flex;
   gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .platform-tag {
@@ -702,9 +725,30 @@ async function downloadSelected() {
   opacity: 1;
 }
 
+.select-all-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.select-all-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.select-all-btn.active {
+  background: var(--accent-glow);
+  color: var(--accent);
+  border-color: transparent;
+}
+
 .file-list {
-  flex: 1;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 4px;

@@ -124,10 +124,15 @@ def _download_parallel(task, url, headers, temp_path, total_size, parts, ext):
 
 
 def _resolve_final_path(task, target_dir, ext):
-    if task.type == "image" and task.album_title:
+    import logging
+    _log = logging.getLogger('downloader')
+    _log.info(f"resolve_path: album_title={task.album_title!r}, type={task.type}, title={task.title!r}")
+    if task.album_title:
         album_folder = resolve_album_path(target_dir, task.album_title)
         os.makedirs(album_folder, exist_ok=True)
-        return os.path.join(album_folder, image_filename(task.index_in_album, task.total_in_album, ext))
+        if task.type == "image":
+            return os.path.join(album_folder, image_filename(task.index_in_album, task.total_in_album, ext))
+        return resolve_video_path(album_folder, task.title, ext)
     return resolve_video_path(target_dir, task.title, ext)
 
 
