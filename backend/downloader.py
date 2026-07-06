@@ -80,8 +80,8 @@ def _download_sequential(task, url, headers, temp_path):
                     f.write(chunk)
                     downloaded += len(chunk)
                     pct = min(int(downloaded / total * 100), 100) if total > 0 else -1
-                    update_task(task.task_id, progress=pct)
-        return ext
+                    update_task(task.task_id, progress=pct, downloaded_bytes=downloaded)
+        return ext, downloaded
 
 
 def _download_parallel(task, url, headers, temp_path, total_size, parts, ext):
@@ -114,10 +114,13 @@ def _download_parallel(task, url, headers, temp_path, total_size, parts, ext):
             with open(pp, "rb") as pf:
                 out.write(pf.read())
 
+    downloaded = os.path.getsize(temp_path)
+    update_task(task.task_id, downloaded_bytes=downloaded)
+
     for pp in part_paths:
         os.remove(pp)
     os.rmdir(part_dir)
-    return ext
+    return ext, downloaded
 
 
 def _resolve_final_path(task, target_dir, ext):
@@ -129,25 +132,29 @@ def _resolve_final_path(task, target_dir, ext):
 
 
 def _download_worker(task: DownloadTask, target_dir: str, mode: str = "auto", threads: int = 4):
+    import time
     try:
-        update_task(task.task_id, status=TaskStatus.DOWNLOADING, progress=0)
+        started = time.time()
+        update_task(task.task_id, status=TaskStatus.DOWNLOADING, progress=0, started_at=started)
 
         headers = _get_headers(task.url)
         total_size, content_type = _probe(task.url, headers)
+        if total_size > 0:
+            update_task(task.task_id, total_bytes=total_size)
 
         os.makedirs(target_dir, exist_ok=True)
         temp_path = os.path.join(target_dir, f".{task.task_id}.download")
 
         if mode == "sequential":
             update_task(task.task_id, progress=1 if total_size > 0 else -1)
-            ext = _download_sequential(task, task.url, headers, temp_path)
+            ext, _ = _download_sequential(task, task.url, headers, temp_path)
 
         elif mode == "parallel" and total_size > 0:
             ext = get_extension(task.url, content_type)
             try:
                 _download_parallel(task, task.url, headers, temp_path, total_size, max(threads, 1), ext)
             except Exception:
-                ext = _download_sequential(task, task.url, headers, temp_path)
+                ext, _ = _download_sequential(task, task.url, headers, temp_path)
 
         else:
             if total_size >= 5 * 1024 * 1024:
@@ -155,13 +162,13 @@ def _download_worker(task: DownloadTask, target_dir: str, mode: str = "auto", th
                 try:
                     _download_parallel(task, task.url, headers, temp_path, total_size, 4, ext)
                 except Exception:
-                    ext = _download_sequential(task, task.url, headers, temp_path)
+                    ext, _ = _download_sequential(task, task.url, headers, temp_path)
             elif total_size > 0:
                 update_task(task.task_id, progress=1)
-                ext = _download_sequential(task, task.url, headers, temp_path)
+                ext, _ = _download_sequential(task, task.url, headers, temp_path)
             else:
                 update_task(task.task_id, progress=-1)
-                ext = _download_sequential(task, task.url, headers, temp_path)
+                ext, _ = _download_sequential(task, task.url, headers, temp_path)
 
         final_path = _resolve_final_path(task, target_dir, ext)
 
@@ -169,14 +176,16 @@ def _download_worker(task: DownloadTask, target_dir: str, mode: str = "auto", th
             os.remove(final_path)
         os.rename(temp_path, final_path)
 
-        update_task(task.task_id, status=TaskStatus.SUCCESS, progress=100, file_path=final_path)
+        finished = time.time()
+        update_task(task.task_id, status=TaskStatus.SUCCESS, progress=100, file_path=final_path, finished_at=finished)
 
     except Exception as e:
         if task.retry_count < task.max_retries:
             update_task(task.task_id, status=TaskStatus.WAITING, progress=0, error=None, retry_count=task.retry_count + 1)
             _executor.submit(_download_worker, task, target_dir)
         else:
-            update_task(task.task_id, status=TaskStatus.FAILED, progress=0, error=str(e))
+            import time
+            update_task(task.task_id, status=TaskStatus.FAILED, progress=0, error=str(e), finished_at=time.time())
     finally:
         temp_path = os.path.join(target_dir, f".{task.task_id}.download")
         if os.path.exists(temp_path):

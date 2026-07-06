@@ -26,6 +26,16 @@
 
     <Transition name="app-enter">
       <div v-if="entered" class="app-inner">
+        <ClipboardMonitor @parse="onClipboardParse" />
+        <Transition name="notif">
+          <div v-if="completedNotif" class="completed-notif" @click="completedNotif = null">
+            <div class="notif-icon">✔</div>
+            <div class="notif-body">
+              <div class="notif-title">下载完成</div>
+              <div class="notif-file">{{ completedNotif.title }}</div>
+            </div>
+          </div>
+        </Transition>
         <header class="app-header">
           <div class="header-left">
             <div class="logo">
@@ -59,9 +69,10 @@
 
         <main class="app-main">
           <section class="panel panel-left">
-            <InputPanel @tasks-added="onTasksAdded" />
+            <InputPanel :clipboard-url="urlInput" @tasks-added="onTasksAdded" />
           </section>
           <section class="panel panel-right">
+            <DownloadStats :stats="stats" />
             <TaskList
               :tasks="tasks"
               @retry="refreshTasks"
@@ -79,6 +90,9 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 import InputPanel from './components/InputPanel.vue'
 import TaskList from './components/TaskList.vue'
+import ClipboardMonitor from './components/ClipboardMonitor.vue'
+import DownloadStats from './components/DownloadStats.vue'
+import { useStats } from './composables/useStats.js'
 
 const API_BASE = '/api'
 const downloadDir = ref('')
@@ -86,7 +100,12 @@ const tasks = ref([])
 const entered = ref(false)
 const theme = ref('dark')
 const videoRef = ref(null)
+const urlInput = ref('')
+const inputPanelKey = ref(0)
+const stats = useStats()
 let pollTimer = null
+let prevTasks = {} // keyed by task_id, for detecting new completions
+const completedNotif = ref(null) // { title, platform }
 
 function loadTheme() {
   try {
@@ -140,11 +159,28 @@ function loadTasksFromCache() {
   } catch { /* noop */ }
 }
 
+function onClipboardParse(url) {
+  urlInput.value = url
+  setTimeout(() => { urlInput.value = '' }, 500)
+}
+
 async function fetchTasks() {
   try {
     const res = await axios.get(`${API_BASE}/tasks`)
-    tasks.value = res.data.data
-    saveTasksToCache(res.data.data)
+    const data = res.data.data
+    // detect new completions
+    for (const t of data) {
+      const prev = prevTasks[t.task_id]
+      if (t.status === 'success' && prev && prev.status !== 'success') {
+        completedNotif.value = { title: t.title, platform: t.type === 'video' ? 'bilibili' : 'douyin' }
+        stats.recordDownload(t.type === 'video' ? 'bilibili' : 'douyin', t.total_bytes)
+        setTimeout(() => { completedNotif.value = null }, 5000)
+      }
+    }
+    prevTasks = {}
+    for (const t of data) prevTasks[t.task_id] = { status: t.status }
+    tasks.value = data
+    saveTasksToCache(data)
   } catch {
     loadTasksFromCache()
   }
@@ -561,7 +597,63 @@ html, body {
   .panel-right { width: auto; max-height: 380px; }
 }
 
+/* ── Completed notification ── */
+.completed-notif {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  min-width: 240px;
+}
+
+.notif-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--success-bg);
+  color: var(--success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.notif-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-title {
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.notif-file {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Transitions ── */
+.notif-enter-active { transition: all 0.3s ease-out; }
+.notif-leave-active { transition: all 0.2s ease-in; }
+.notif-enter-from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+.notif-leave-to { opacity: 0; transform: translateX(-50%) translateY(-8px); }
 .landing-leave-enter-active { transition: all 0.5s ease-out; }
 .landing-leave-leave-active { transition: all 0.35s ease-in; }
 .landing-leave-enter-from { opacity: 0; transform: translateY(-20px); }

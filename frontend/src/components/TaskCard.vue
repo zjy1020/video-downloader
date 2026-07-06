@@ -29,6 +29,19 @@
         <span class="progress-text">{{ task.progress >= 0 ? task.progress + '%' : '...' }}</span>
       </div>
 
+      <div v-if="task.status === 'downloading' && task.downloaded_bytes > 0" class="card-speed-row">
+        <span class="speed-val">{{ speedText }}</span>
+        <span class="speed-sep">·</span>
+        <span class="speed-progress">{{ formatBytes(task.downloaded_bytes) }} / {{ formatBytes(task.total_bytes) }}</span>
+        <span v-if="etaText" class="speed-eta">剩余 {{ etaText }}</span>
+      </div>
+
+      <div v-if="task.status === 'success' && task.finished_at && task.started_at" class="card-complete-row">
+        <span class="complete-duration">耗时 {{ durationText }}</span>
+        <span class="speed-sep">·</span>
+        <span class="complete-speed">平均 {{ avgSpeedText }}</span>
+      </div>
+
       <div v-if="task.error" class="card-error" :title="task.error">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10" />
@@ -88,7 +101,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 
 const props = defineProps({
@@ -97,6 +110,70 @@ const props = defineProps({
 
 const emit = defineEmits(['retry', 'delete'])
 const API_BASE = '/api'
+
+const speedBytesPerSec = ref(0)
+const lastBytes = ref(0)
+const lastTime = ref(0)
+
+watch(() => props.task.downloaded_bytes, (val) => {
+  if (!val || val <= 0) { speedBytesPerSec.value = 0; return }
+  const now = Date.now()
+  if (lastTime.value && lastBytes.value > 0 && val > lastBytes.value) {
+    const delta = val - lastBytes.value
+    const dt = (now - lastTime.value) / 1000
+    if (dt > 0) speedBytesPerSec.value = delta / dt
+  }
+  lastBytes.value = val
+  lastTime.value = now
+})
+
+const speedText = computed(() => {
+  if (!speedBytesPerSec.value) return ''
+  return formatSpeed(speedBytesPerSec.value)
+})
+
+const etaText = computed(() => {
+  if (!speedBytesPerSec.value || !props.task.total_bytes) return ''
+  const remaining = props.task.total_bytes - props.task.downloaded_bytes
+  if (remaining <= 0) return ''
+  const secs = remaining / speedBytesPerSec.value
+  return formatDuration(secs)
+})
+
+const durationText = computed(() => {
+  const s = props.task.started_at, f = props.task.finished_at
+  if (!s || !f) return ''
+  return formatDuration(f - s)
+})
+
+const avgSpeedText = computed(() => {
+  const s = props.task.started_at, f = props.task.finished_at
+  if (!s || !f || !props.task.total_bytes) return ''
+  const dt = f - s
+  if (dt <= 0) return ''
+  return formatSpeed(props.task.total_bytes / dt)
+})
+
+function formatSpeed(bps) {
+  if (bps <= 0) return ''
+  if (bps >= 1048576) return (bps / 1048576).toFixed(1) + ' MB/s'
+  return (bps / 1024).toFixed(0) + ' KB/s'
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0; let v = bytes
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++ }
+  return v.toFixed(i > 0 ? 1 : 0) + ' ' + units[i]
+}
+
+function formatDuration(secs) {
+  if (secs < 0) secs = 0
+  if (secs < 60) return Math.round(secs) + '秒'
+  if (secs < 3600) return Math.floor(secs / 60) + '分' + Math.round(secs % 60) + '秒'
+  return Math.floor(secs / 3600) + '时' + Math.floor((secs % 3600) / 60) + '分'
+}
 
 const thumbSrc = computed(() => {
   if (props.task.type === 'image' && props.task.url) {
@@ -304,6 +381,44 @@ async function openFolder() {
   text-align: right;
   font-family: var(--font-mono);
   font-weight: var(--font-weight-medium);
+}
+
+/* ── Speed / ETA ── */
+.card-speed-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.speed-val {
+  color: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+.speed-sep {
+  opacity: 0.3;
+}
+
+.speed-eta {
+  margin-left: auto;
+  color: var(--text-secondary);
+}
+
+/* ── Complete info ── */
+.card-complete-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.complete-duration, .complete-speed {
+  color: var(--text-secondary);
 }
 
 /* ── Error ── */

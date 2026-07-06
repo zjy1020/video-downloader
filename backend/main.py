@@ -114,6 +114,11 @@ def tasks():
                 "album_title": t.album_title,
                 "index_in_album": t.index_in_album,
                 "total_in_album": t.total_in_album,
+                "downloaded_bytes": t.downloaded_bytes,
+                "total_bytes": t.total_bytes,
+                "started_at": t.started_at,
+                "finished_at": t.finished_at,
+                "created_at": t.created_at,
             }
             for t in all_tasks
         ],
@@ -140,6 +145,10 @@ def download_progress(task_id: str):
             "status": task.status,
             "file_path": task.file_path,
             "error": task.error,
+            "downloaded_bytes": task.downloaded_bytes,
+            "total_bytes": task.total_bytes,
+            "started_at": task.started_at,
+            "finished_at": task.finished_at,
         },
     }
 

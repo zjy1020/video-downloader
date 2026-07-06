@@ -34,6 +34,10 @@ class DownloadTask:
     index_in_album: int = 0
     total_in_album: int = 0
     created_at: float = field(default_factory=time.time)
+    downloaded_bytes: int = 0
+    total_bytes: int = 0
+    started_at: Optional[float] = None
+    finished_at: Optional[float] = None
 
 
 _task_store: dict[str, DownloadTask] = {}
@@ -59,6 +63,10 @@ def _save_tasks():
                 "index_in_album": t.index_in_album,
                 "total_in_album": t.total_in_album,
                 "created_at": t.created_at,
+                "downloaded_bytes": t.downloaded_bytes,
+                "total_bytes": t.total_bytes,
+                "started_at": t.started_at,
+                "finished_at": t.finished_at,
             }
             for t in _task_store.values()
         ]

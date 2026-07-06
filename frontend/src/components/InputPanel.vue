@@ -175,9 +175,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 
+const props = defineProps({
+  clipboardUrl: { type: String, default: '' },
+})
 const emit = defineEmits(['tasks-added'])
 const API_BASE = '/api'
 
@@ -201,6 +204,13 @@ const biliQualities = [
   { value: '120', label: '4K' },
 ]
 const parseHistory = ref(loadParseHistory())
+
+watch(() => props.clipboardUrl, (url) => {
+  if (url) {
+    urlText.value = url
+    doParse()
+  }
+})
 
 const selectedCount = computed(() =>
   Object.values(selected.value).filter(Boolean).length
