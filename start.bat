@@ -7,10 +7,19 @@ cd /d "%~dp0"
 echo ================================
 echo   Step 1/4: 安装 Python 依赖
 echo ================================
+
+python --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [错误] 未检测到 Python！
+    echo 请先安装 Python 3.8+（装的时候记得勾选"Add Python to PATH"）
+    echo 下载: https://www.python.org/downloads/
+    pause
+    exit /b 1
+)
+
 pip install -r backend/requirements.txt
 if %errorlevel% neq 0 (
-    echo [错误] Python 依赖安装失败，请确保已安装 Python 3.8+
-    echo 下载: https://www.python.org/downloads/
+    echo [错误] Python 依赖安装失败
     pause
     exit /b 1
 )

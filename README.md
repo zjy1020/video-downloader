@@ -5,13 +5,15 @@ B站 / 抖音视频 & 图文链接解析下载工具，Tauri v2 桌面版。
 ## 快速开始
 
 > **需要：** Python 3.8+、Node.js 18+、Git
+>
+> 没装 Python？→ https://www.python.org/downloads/（装的时候勾选"Add Python to PATH"）
 
 ```bash
 # 1. 克隆
 git clone https://github.com/zjy1020/video-downloader
 cd video-downloader
 
-# 2. 安装 Python 依赖（一条命令）
+# 2. 安装 Python 依赖（一条命令，pip 自带无需额外安装）
 pip install -r backend/requirements.txt
 
 # 3. 安装前端依赖
