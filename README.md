@@ -6,7 +6,7 @@ B站 / 抖音视频 & 图文链接解析下载工具，Tauri v2 桌面版。
 
 > **需要：** Python 3.8+、Node.js 18+、Git
 
-`ash
+```bash
 # 1. 克隆
 git clone https://github.com/zjy1020/video-downloader
 cd video-downloader
@@ -19,7 +19,7 @@ cd frontend && npm install && cd ..
 
 # 4. 启动！（双击 start.bat 也行）
 start.bat
-`
+```
 
 浏览器打开 **http://127.0.0.1:3000**
 
@@ -34,24 +34,24 @@ start.bat
 
 ## 切换解析接口
 
-解析接口在 ackend/parser.py 顶部配置：
+解析接口在 `backend/parser.py` 顶部配置：
 
-`python
+```python
 BILIBILI_API = "https://api.bugpk.com/api/bilibili"
 DOUYIN_API = "https://api.bugpk.com/api/douyin"
-`
+```
 
-默认使用 ugpk.com 聚合接口。失效时可替换为其他同类服务，或启用 B站原生 API（已内置 pi.bilibili.com 作为备用）。
+默认使用 `bugpk.com` 聚合接口。失效时可替换为其他同类服务，或启用 B站原生 API（已内置 `api.bilibili.com` 作为备用）。
 
 B站解析走两条路径：
-1. ugpk.com 聚合接口（优先）
-2. pi.bilibili.com 原生 API（备用）
+1. `bugpk.com` 聚合接口（优先）
+2. `api.bilibili.com` 原生 API（备用）
 
 抖音接口失效时自动走 mock 数据保底。
 
 ## 目录结构
 
-`
+```
 video-downloader/
 ├── backend/
 │   ├── main.py              # FastAPI 入口
@@ -77,27 +77,27 @@ video-downloader/
 ├── downloads/               # 默认下载目录
 ├── start.bat                # 一键启动（含自动装依赖）
 └── stop.bat                 # 停止开发环境
-`
+```
 
 ## 构建打包
 
 ### 1. 打包 Python 后端为 exe
 
-`ash
+```bash
 cd backend
-.\build-backend.bat
-`
+.uild-backend.bat
+```
 
-输出：rontend/src-tauri/binaries/python-backend-x86_64-pc-windows-msvc.exe
+输出：`frontend/src-tauri/binaries/python-backend-x86_64-pc-windows-msvc.exe`
 
 ### 2. 构建 Tauri 安装包（包含前后端）
 
-`ash
+```bash
 cd frontend
 npx tauri build
-`
+```
 
-输出：rontend/src-tauri/target/release/bundle/nsis/视频解析下载_0.1.0_x64-setup.exe
+输出：`frontend/src-tauri/target/release/bundle/nsis/视频解析下载_0.1.0_x64-setup.exe`
 
 安装包包含所有依赖，用户无需安装 Python 或 Node.js。
 
