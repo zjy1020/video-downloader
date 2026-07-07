@@ -85,7 +85,7 @@ video-downloader/
 
 ```bash
 cd backend
-.uild-backend.bat
+.\build-backend.bat
 ```
 
 输出：`frontend/src-tauri/binaries/python-backend-x86_64-pc-windows-msvc.exe`
