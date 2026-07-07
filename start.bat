@@ -17,7 +17,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-pip install -r backend/requirements.txt
+python -m pip install -r backend/requirements.txt
 if %errorlevel% neq 0 (
     echo [错误] Python 依赖安装失败
     pause
